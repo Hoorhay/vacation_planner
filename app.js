@@ -1,9 +1,9 @@
 // Vacation Planner - Standalone Zero-Build App (whisky_db_search architecture)
 
 const STORAGE_KEY_TRIPS = 'vacation_trips_data';
+const STORAGE_KEY_DELETED = 'vacation_deleted_trips';
 const STORAGE_KEY_DB_URL = 'vacation_firebase_rtdb_url';
 const STORAGE_KEY_TRACKER = 'vacation_firebase_tracker';
-const STORAGE_KEY_RO_TRACKER = 'vacation_firebase_ro_tracker';
 const STORAGE_KEY_IS_RO = 'vacation_firebase_is_ro';
 const STORAGE_KEY_LAST_SYNC = 'vacation_last_sync_time';
 const STORAGE_KEY_IS_DIRTY = 'vacation_is_dirty';
@@ -165,6 +165,8 @@ function getSvgIcon(name, size = 18, color = 'currentColor', strokeWidth = 1.75)
       return `<svg ${common}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
     case 'image':
       return `<svg ${common}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+    case 'refresh':
+      return `<svg ${common}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
     default:
       return '';
   }
@@ -184,7 +186,6 @@ function checkUrlCredentials() {
   const params = new URLSearchParams(window.location.search);
   const dbParam = params.get('db');
   const trackerParam = params.get('tracker');
-  const roTrackerParam = params.get('roTracker') || params.get('ro_tracker');
   const isRoParam = params.get('readonly') === 'true' || params.get('ro') === 'true';
 
   let updated = false;
@@ -199,10 +200,6 @@ function checkUrlCredentials() {
       localStorage.setItem(STORAGE_KEY_IS_RO, 'true');
     }
   }
-  if (roTrackerParam) {
-    localStorage.setItem(STORAGE_KEY_RO_TRACKER, roTrackerParam);
-    updated = true;
-  }
 
   if (updated) {
     window.history.replaceState({}, document.title, window.location.pathname);
@@ -212,18 +209,27 @@ function checkUrlCredentials() {
 function getStoredCredentials() {
   const dbUrl = localStorage.getItem(STORAGE_KEY_DB_URL) || '';
   const tracker = localStorage.getItem(STORAGE_KEY_TRACKER) || '';
-  const roTracker = localStorage.getItem(STORAGE_KEY_RO_TRACKER) || '';
   const isReadOnly = localStorage.getItem(STORAGE_KEY_IS_RO) === 'true' || (tracker && tracker.endsWith('_ro'));
-  return { dbUrl, tracker, roTracker, isReadOnly };
+  return { dbUrl, tracker, isReadOnly };
 }
 
-// Data Persistence (localStorage)
+// Data Persistence (localStorage with entity timestamps & tombstones)
 function loadTripsFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_TRIPS);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
+        let changed = false;
+        parsed.forEach((t) => {
+          if (!t.updatedAt) {
+            t.updatedAt = Date.now() - 3600000;
+            changed = true;
+          }
+        });
+        if (changed) {
+          localStorage.setItem(STORAGE_KEY_TRIPS, JSON.stringify(parsed));
+        }
         return parsed;
       }
     }
@@ -233,7 +239,35 @@ function loadTripsFromStorage() {
   return [];
 }
 
+function loadDeletedTrips() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_DELETED);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function recordTripDeletion(tripId) {
+  const deleted = loadDeletedTrips();
+  deleted[tripId] = Date.now();
+  localStorage.setItem(STORAGE_KEY_DELETED, JSON.stringify(deleted));
+}
+
+function touchTrip(tripOrId) {
+  const trip = typeof tripOrId === 'string'
+    ? state.trips.find((t) => t.id === tripOrId)
+    : tripOrId;
+  if (trip) {
+    trip.updatedAt = Date.now();
+  }
+}
+
 function saveTripsToStorage(trips, markDirty = true) {
+  const now = Date.now();
+  trips.forEach((t) => {
+    if (!t.updatedAt) t.updatedAt = now;
+  });
   state.trips = trips;
   localStorage.setItem(STORAGE_KEY_TRIPS, JSON.stringify(trips));
   if (markDirty) {
@@ -258,10 +292,16 @@ function getEndpointUrl(trackerName) {
   return `${baseUrl}/trackers/trips/${encodeURIComponent(trackerName)}.json`;
 }
 
-async function pullFromCloud() {
-  const { dbUrl, tracker } = getStoredCredentials();
+// Smart Two-Way Merge Sync (Last-Write-Wins per Entity + Conditional PUT via ETag)
+async function smartSyncWithCloud(showSuccessAlert = true) {
+  const { dbUrl, tracker, isReadOnly } = getStoredCredentials();
   if (!dbUrl) {
     alert('Please configure your Firebase Database URL first.');
+    openConfigModal();
+    return;
+  }
+  if (!tracker) {
+    alert('Please configure your Tracker Code in Settings first.');
     openConfigModal();
     return;
   }
@@ -271,88 +311,166 @@ async function pullFromCloud() {
 
   try {
     const url = getEndpointUrl(tracker);
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
 
-    const data = await res.json();
-    if (data && typeof data === 'object') {
-      let tripsList = [];
-      if (Array.isArray(data)) {
-        tripsList = data.filter(Boolean);
-      } else if (data.days || data.totalDays) {
-        tripsList = [data];
-      } else {
-        tripsList = Object.values(data).filter(Boolean);
-      }
-
-      if (tripsList.length > 0) {
-        saveTripsToStorage(tripsList, false);
-        localStorage.setItem(STORAGE_KEY_LAST_SYNC, String(Date.now()));
-        localStorage.setItem(STORAGE_KEY_IS_DIRTY, 'false');
-        alert('All trips pulled successfully from Firebase.');
-      } else {
-        alert('No trips found at tracker location.');
-      }
-    } else {
-      alert('No data found at tracker location.');
+    // 1. Single Read (GET) with ETag
+    const getRes = await fetch(url, { cache: 'no-store' });
+    if (!getRes.ok && getRes.status !== 404) {
+      throw new Error(`Cloud read failed: HTTP ${getRes.status} (${getRes.statusText})`);
     }
-  } catch (err) {
-    alert(`Pull failed: ${err.message}`);
-  } finally {
-    state.isSyncing = false;
-    renderApp();
-  }
-}
 
-async function pushToCloud() {
-  const { dbUrl, tracker, roTracker, isReadOnly } = getStoredCredentials();
-  if (!dbUrl) {
-    alert('Please configure your Firebase Database URL first.');
-    openConfigModal();
-    return;
-  }
-  if (isReadOnly) {
-    alert('Cannot push changes in read-only mode.');
-    return;
-  }
+    const etag = getRes.headers.get('ETag') || null;
+    const remoteData = getRes.status === 404 ? null : await getRes.json();
 
-  state.isSyncing = true;
-  renderApp();
+    // 2. Parse Remote Trips and Tombstones
+    const remoteTripsMap = {};
+    let remoteTombstones = {};
 
-  try {
-    const tripsMap = {};
-    state.trips.forEach((t) => {
-      tripsMap[t.id] = t;
-    });
-
-    const primaryUrl = getEndpointUrl(tracker);
-    const res = await fetch(primaryUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(tripsMap)
-    });
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-
-    // Auto-mirror to read-only tracker
-    if (roTracker && roTracker !== tracker) {
-      try {
-        const roUrl = getEndpointUrl(roTracker);
-        await fetch(roUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(tripsMap)
+    if (remoteData && typeof remoteData === 'object') {
+      if (remoteData._tombstones && typeof remoteData._tombstones === 'object') {
+        remoteTombstones = remoteData._tombstones;
+      }
+      if (Array.isArray(remoteData)) {
+        remoteData.filter(Boolean).forEach((t) => {
+          if (t && t.id) remoteTripsMap[t.id] = t;
         });
-      } catch (mirrorErr) {
-        console.warn('Failed to mirror to read-only tracker:', mirrorErr);
+      } else {
+        Object.entries(remoteData).forEach(([key, val]) => {
+          if (key !== '_tombstones' && val && typeof val === 'object' && val.id) {
+            remoteTripsMap[val.id] = val;
+          }
+        });
       }
     }
 
+    // 3. Reconcile Tombstones (deleted trips)
+    const localTombstones = loadDeletedTrips();
+    const mergedTombstones = { ...localTombstones };
+    let tombstonesUpdatedRemotely = false;
+
+    Object.entries(remoteTombstones).forEach(([id, time]) => {
+      const remoteT = Number(time) || 0;
+      const localT = Number(mergedTombstones[id]) || 0;
+      if (remoteT > localT) {
+        mergedTombstones[id] = remoteT;
+      }
+    });
+
+    Object.entries(localTombstones).forEach(([id, time]) => {
+      const localT = Number(time) || 0;
+      const remoteT = Number(remoteTombstones[id]) || 0;
+      if (localT > remoteT) {
+        tombstonesUpdatedRemotely = true;
+      }
+    });
+
+    // 4. Two-Way Merge per Trip (Last-Write-Wins based on updatedAt)
+    const localTripsMap = {};
+    state.trips.forEach((t) => {
+      localTripsMap[t.id] = t;
+    });
+
+    const allTripIds = new Set([
+      ...Object.keys(localTripsMap),
+      ...Object.keys(remoteTripsMap)
+    ]);
+
+    const mergedTripsMap = {};
+    let localNeedsSave = false;
+    let remoteNeedsWrite = tombstonesUpdatedRemotely;
+    let pushedCount = 0;
+    let pulledCount = 0;
+
+    allTripIds.forEach((id) => {
+      const localTrip = localTripsMap[id];
+      const remoteTrip = remoteTripsMap[id];
+      const deletedAt = Number(mergedTombstones[id]) || 0;
+
+      const localTime = localTrip ? (Number(localTrip.updatedAt) || 0) : 0;
+      const remoteTime = remoteTrip ? (Number(remoteTrip.updatedAt) || 0) : 0;
+
+      // Drop if deleted
+      if (deletedAt >= localTime && deletedAt >= remoteTime) {
+        if (localTrip) localNeedsSave = true;
+        if (remoteTrip) remoteNeedsWrite = true;
+        return;
+      }
+
+      if (localTrip && remoteTrip) {
+        if (localTime > remoteTime) {
+          mergedTripsMap[id] = localTrip;
+          remoteNeedsWrite = true;
+          pushedCount++;
+        } else if (remoteTime > localTime) {
+          mergedTripsMap[id] = remoteTrip;
+          localNeedsSave = true;
+          pulledCount++;
+        } else {
+          mergedTripsMap[id] = localTrip;
+        }
+      } else if (localTrip) {
+        mergedTripsMap[id] = localTrip;
+        remoteNeedsWrite = true;
+        pushedCount++;
+      } else if (remoteTrip) {
+        mergedTripsMap[id] = remoteTrip;
+        localNeedsSave = true;
+        pulledCount++;
+      }
+    });
+
+    // 5. Update local state
+    const finalTrips = Object.values(mergedTripsMap);
+    saveTripsToStorage(finalTrips, false);
+    localStorage.setItem(STORAGE_KEY_DELETED, JSON.stringify(mergedTombstones));
+
+    // 6. Conditional Write to Cloud (Only when local has newer changes!)
+    if (remoteNeedsWrite && !isReadOnly) {
+      const payload = {
+        ...mergedTripsMap,
+        _tombstones: mergedTombstones
+      };
+
+      const putHeaders = { 'Content-Type': 'application/json' };
+      if (etag && etag !== '*') {
+        putHeaders['If-Match'] = etag;
+      }
+
+      const putRes = await fetch(url, {
+        method: 'PUT',
+        headers: putHeaders,
+        body: JSON.stringify(payload)
+      });
+
+      if (putRes.status === 412) {
+        // Concurrency conflict: someone else updated cloud right now, retry
+        console.warn('Sync concurrency conflict (412). Retrying merge...');
+        state.isSyncing = false;
+        return smartSyncWithCloud(showSuccessAlert);
+      }
+
+      if (!putRes.ok) {
+        throw new Error(`Cloud update failed: HTTP ${putRes.status} (${putRes.statusText})`);
+      }
+    }
+
+    // 7. Finalize & report
     localStorage.setItem(STORAGE_KEY_LAST_SYNC, String(Date.now()));
     localStorage.setItem(STORAGE_KEY_IS_DIRTY, 'false');
-    alert('All trips pushed and synced to cloud.');
+
+    if (showSuccessAlert) {
+      if (pushedCount > 0 && pulledCount > 0) {
+        alert(`Sync complete: Sent ${pushedCount} update(s), received ${pulledCount} update(s).`);
+      } else if (pushedCount > 0) {
+        alert(`Sync complete: Sent ${pushedCount} update(s) to cloud.`);
+      } else if (pulledCount > 0) {
+        alert(`Sync complete: Received ${pulledCount} update(s) from cloud.`);
+      } else {
+        alert('Sync complete: All vacations are up to date.');
+      }
+    }
   } catch (err) {
-    alert(`Push failed: ${err.message}`);
+    console.error('Smart sync error:', err);
+    alert(`Sync error: ${err.message}`);
   } finally {
     state.isSyncing = false;
     renderApp();
@@ -362,8 +480,41 @@ async function pushToCloud() {
 // UI Rendering Logic
 const root = document.getElementById('root');
 
+function autoSelectDefaultTrip() {
+  if (!state.trips || state.trips.length === 0) {
+    state.activeTripId = null;
+    return;
+  }
+
+  // 1. Current in-progress trip
+  const currentTrip = state.trips.find((t) => getTripDateStatus(t).status === 'current');
+  if (currentTrip) {
+    state.activeTripId = currentTrip.id;
+    const status = getTripDateStatus(currentTrip);
+    state.activeDayNumber = status.todayDayNumber;
+    return;
+  }
+
+  // 2. Upcoming future trip
+  const futureTrip = state.trips.find((t) => getTripDateStatus(t).status === 'future');
+  if (futureTrip) {
+    state.activeTripId = futureTrip.id;
+    state.activeDayNumber = 1;
+    return;
+  }
+
+  // 3. Fallback to first trip
+  state.activeTripId = state.trips[0].id;
+  state.activeDayNumber = 1;
+}
+
 function renderApp() {
   if (!root) return;
+
+  const isDesktop = window.innerWidth >= 860;
+  if (isDesktop && !state.activeTripId && state.trips.length > 0) {
+    autoSelectDefaultTrip();
+  }
 
   const { isReadOnly, dbUrl } = getStoredCredentials();
   const dirty = isLocalDirty();
@@ -372,15 +523,33 @@ function renderApp() {
     ? new Date(lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : 'Never';
 
-  if (!state.activeTripId) {
-    renderHomeView({ isReadOnly, dbUrl, dirty, formattedSync });
-  } else {
-    renderTripView({ isReadOnly, dbUrl, dirty, formattedSync });
+  const activeTrip = state.trips.find((t) => t.id === state.activeTripId) || null;
+
+  root.innerHTML = `
+    <div class="app-container ${activeTrip ? 'has-active-trip' : 'no-active-trip'}">
+      <!-- Left Sidebar: Vacations Overview -->
+      <aside class="sidebar-pane">
+        <div class="sidebar-content">
+          ${renderSidebarView()}
+        </div>
+        ${renderFooterBar({ isReadOnly, dbUrl, dirty, formattedSync })}
+      </aside>
+
+      <!-- Center / Main Column: Active Vacation Itinerary -->
+      <main class="content-pane">
+        ${renderItineraryView(activeTrip, { isReadOnly, dbUrl, dirty, formattedSync })}
+      </main>
+    </div>
+  `;
+
+  attachHomeListeners();
+  if (activeTrip) {
+    attachTripListeners(activeTrip);
   }
 }
 
-// 1. Home Screen
-function renderHomeView({ isReadOnly, dbUrl, dirty, formattedSync }) {
+// 1. Left Sidebar: Vacations List
+function renderSidebarView() {
   let tripsHtml = '';
   if (state.trips.length === 0) {
     tripsHtml = `
@@ -392,8 +561,9 @@ function renderHomeView({ isReadOnly, dbUrl, dirty, formattedSync }) {
   } else {
     state.trips.forEach((trip) => {
       const range = formatDateRange(trip.startDate, trip.totalDays);
+      const isSelected = trip.id === state.activeTripId;
       tripsHtml += `
-        <div class="trip-card" data-trip-id="${trip.id}">
+        <div class="trip-card ${isSelected ? 'active' : ''}" data-trip-id="${trip.id}">
           <div class="trip-card-header">
             <h3 class="trip-card-title">${escapeHtml(trip.title)}</h3>
             <span class="badge-pill">${trip.totalDays} days</span>
@@ -403,7 +573,7 @@ function renderHomeView({ isReadOnly, dbUrl, dirty, formattedSync }) {
             <span>${range}</span>
           </div>
           <div class="trip-card-footer">
-            <span class="card-action-link">View Itinerary &rsaquo;</span>
+            <span class="card-action-link">${isSelected ? 'Viewing Itinerary' : 'View Itinerary &rsaquo;'}</span>
             <div style="display: flex; align-items: center; gap: 6px;">
               <button type="button" class="card-delete-btn" data-share-id="${trip.id}" title="Share itinerary">Share</button>
               <button type="button" class="card-delete-btn" data-delete-id="${trip.id}" title="Delete trip">Delete</button>
@@ -414,32 +584,26 @@ function renderHomeView({ isReadOnly, dbUrl, dirty, formattedSync }) {
     });
   }
 
-  root.innerHTML = `
-    <div class="app-container">
-      <div class="home-view" style="margin-top: 4px;">
-        <h1 class="home-title">Vacation Planner</h1>
-        <p class="home-subtitle">Plan, track, and navigate travel itineraries offline.</p>
+  return `
+    <div class="home-view" style="margin-top: 4px;">
+      <h1 class="home-title">Vacation Planner</h1>
+      <p class="home-subtitle">Plan, track, and navigate travel itineraries offline.</p>
 
-        <button type="button" class="primary-btn" id="planTripBtn">
-          ${getSvgIcon('plus', 16, '#09090b', 2.5)}
-          Plan New Trip
-        </button>
+      <button type="button" class="primary-btn" id="planTripBtn">
+        ${getSvgIcon('plus', 16, '#09090b', 2.5)}
+        Plan New Trip
+      </button>
 
-        <div>
-          <span style="font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.08em; font-weight: 600;">
-            Upcoming & Planned Trips (${state.trips.length})
-          </span>
-          <div class="trips-list" style="margin-top: 10px;">
-            ${tripsHtml}
-          </div>
+      <div>
+        <span style="font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.08em; font-weight: 600;">
+          Upcoming & Planned Trips (${state.trips.length})
+        </span>
+        <div class="trips-list" style="margin-top: 10px;">
+          ${tripsHtml}
         </div>
       </div>
-
-      ${renderFooterBar({ isReadOnly, dbUrl, dirty, formattedSync })}
     </div>
   `;
-
-  attachHomeListeners();
 }
 
 function attachHomeListeners() {
@@ -486,13 +650,20 @@ function attachHomeListeners() {
   attachFooterListeners();
 }
 
-// 2. Trip Itinerary Screen
-function renderTripView({ isReadOnly, dbUrl, dirty, formattedSync }) {
-  const trip = state.trips.find((t) => t.id === state.activeTripId);
+// 2. Main Center Column: Trip Itinerary Screen
+function renderItineraryView(trip, { isReadOnly, dbUrl, dirty, formattedSync }) {
   if (!trip) {
-    state.activeTripId = null;
-    renderApp();
-    return;
+    return `
+      <div class="empty-itinerary-pane">
+        <div class="empty-itinerary-card">
+          ${getSvgIcon('calendar', 34, 'var(--accent-blue)')}
+          <h2 style="font-size: 18px; font-weight: 600; margin: 4px 0 2px; color: var(--text-primary);">No Vacation Selected</h2>
+          <p style="font-size: 13px; color: var(--text-muted); margin: 0; line-height: 1.4;">
+            Select a vacation from the left or click <strong>Plan New Trip</strong> to view and customize its itinerary.
+          </p>
+        </div>
+      </div>
+    `;
   }
 
   const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
@@ -510,6 +681,20 @@ function renderTripView({ isReadOnly, dbUrl, dirty, formattedSync }) {
   for (let i = 1; i <= trip.totalDays; i++) {
     segmentsHtml += `<span class="progress-segment ${i <= state.activeDayNumber ? 'active' : ''}"></span>`;
   }
+
+  // Day Pill Tabs
+  let dayTabsHtml = '';
+  trip.days.forEach((d) => {
+    const isAct = d.dayNumber === state.activeDayNumber;
+    const date = getDateForDay(trip.startDate, d.dayNumber);
+    const shortDate = formatShortDate(date);
+    dayTabsHtml += `
+      <button type="button" class="day-tab-pill ${isAct ? 'active' : ''}" data-nav-day="${d.dayNumber}">
+        <span class="day-tab-num">Day ${d.dayNumber}</span>
+        <span class="day-tab-date">${shortDate}</span>
+      </button>
+    `;
+  });
 
   // Timeline events
   let timelineHtml = '';
@@ -553,18 +738,20 @@ function renderTripView({ isReadOnly, dbUrl, dirty, formattedSync }) {
     `;
   });
 
-  root.innerHTML = `
-    <div class="app-container">
+  return `
+    <div>
       <header class="trip-header">
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <button type="button" class="back-to-trips-btn" id="backToTripsBtn">&lsaquo; All Trips</button>
-          <div style="display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">
+          <div style="display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-left: auto;">
             <span>${escapeHtml(trip.title)}</span>
             <span style="font-weight: 600; color: var(--text-body);">${state.activeDayNumber}/${trip.totalDays}</span>
           </div>
         </div>
 
         <div class="progress-bar">${segmentsHtml}</div>
+
+        <div class="day-tabs-nav">${dayTabsHtml}</div>
 
         <div class="date-title-row">
           <h1 class="date-title">${formattedFullDate}</h1>
@@ -629,8 +816,6 @@ function renderTripView({ isReadOnly, dbUrl, dirty, formattedSync }) {
       ${renderFooterBar({ isReadOnly, dbUrl, dirty, formattedSync })}
     </div>
   `;
-
-  attachTripListeners(trip);
 }
 
 function renderTimelineItem(item, isFirst, isLast) {
@@ -772,6 +957,14 @@ function attachTripListeners(trip) {
     }
   });
 
+  document.querySelectorAll('[data-nav-day]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const dayNum = Number(btn.getAttribute('data-nav-day'));
+      state.activeDayNumber = dayNum;
+      renderApp();
+    });
+  });
+
   document.getElementById('backToTodayBtn')?.addEventListener('click', () => {
     const status = getTripDateStatus(trip);
     if (status.status === 'current') {
@@ -806,6 +999,7 @@ function attachTripListeners(trip) {
       e.preventDefault();
       const val = input.value.trim() || `Day ${activeDay.dayNumber}`;
       activeDay.routeTitle = val;
+      touchTrip(trip);
       saveTripsToStorage(state.trips, true);
       renderApp();
     });
@@ -852,6 +1046,7 @@ function attachTripListeners(trip) {
       });
 
       trip.pool = trip.pool.filter((i) => i.id !== idea.id);
+      touchTrip(trip);
       saveTripsToStorage(state.trips, true);
       renderApp();
     });
@@ -860,7 +1055,7 @@ function attachTripListeners(trip) {
   attachFooterListeners();
 }
 
-// 3. Footer Status Bar
+// 3. Footer Status Bar (Unified Smart Sync)
 function renderFooterBar({ isReadOnly, dbUrl, dirty, formattedSync }) {
   return `
     <footer class="footer-bar">
@@ -869,12 +1064,14 @@ function renderFooterBar({ isReadOnly, dbUrl, dirty, formattedSync }) {
           ? `
           <div class="sync-bar">
             <div class="sync-status-indicator">
-              <span class="dot ${dirty ? 'dirty' : isReadOnly ? 'readonly' : 'online'}"></span>
-              <span>${dirty ? '⚠️ Unsaved local changes' : `Synced: ${formattedSync}`}</span>
+              <span class="dot ${state.isSyncing ? 'syncing' : dirty ? 'dirty' : isReadOnly ? 'readonly' : 'online'}"></span>
+              <span>${state.isSyncing ? 'Syncing...' : dirty ? '⚠️ Unsynced changes' : `Synced: ${formattedSync}`}</span>
             </div>
             <div class="sync-btns">
-              <button type="button" class="icon-btn" id="pullBtn" ${state.isSyncing ? 'disabled' : ''}>⬇ Pull</button>
-              ${!isReadOnly ? `<button type="button" class="icon-btn ${dirty ? 'badge-pill' : ''}" id="pushBtn" ${state.isSyncing ? 'disabled' : ''}>⬆ Push</button>` : ''}
+              <button type="button" class="icon-btn sync-now-btn ${dirty ? 'badge-pill' : ''}" ${state.isSyncing ? 'disabled' : ''} title="Two-way smart sync">
+                ${state.isSyncing ? getSvgIcon('clock', 12, 'currentColor') : getSvgIcon('refresh', 12, 'currentColor')}
+                ${state.isSyncing ? 'Syncing...' : 'Sync Now'}
+              </button>
             </div>
           </div>
         `
@@ -885,16 +1082,19 @@ function renderFooterBar({ isReadOnly, dbUrl, dirty, formattedSync }) {
           <span class="dot ${dirty ? 'dirty' : dbUrl ? (isReadOnly ? 'readonly' : 'online') : ''}"></span>
           <span>${dbUrl ? (isReadOnly ? 'Firebase (Read Only)' : 'Firebase (Read/Write)') : 'Local Offline Mode'}</span>
         </div>
-        <button type="button" style="text-decoration: underline; color: var(--text-muted); cursor: pointer;" id="footerConfigBtn">Settings</button>
+        <button type="button" style="text-decoration: underline; color: var(--text-muted); cursor: pointer;" class="footer-config-btn">Settings</button>
       </div>
     </footer>
   `;
 }
 
 function attachFooterListeners() {
-  document.getElementById('pullBtn')?.addEventListener('click', pullFromCloud);
-  document.getElementById('pushBtn')?.addEventListener('click', pushToCloud);
-  document.getElementById('footerConfigBtn')?.addEventListener('click', openConfigModal);
+  document.querySelectorAll('.sync-now-btn').forEach((btn) => {
+    btn.addEventListener('click', () => smartSyncWithCloud(true));
+  });
+  document.querySelectorAll('.footer-config-btn').forEach((btn) => {
+    btn.addEventListener('click', openConfigModal);
+  });
 }
 
 // 4. Plan New Trip Modal (supports Duration in Days OR Choose End Date)
@@ -1114,6 +1314,7 @@ function openNewTripModal() {
       startDate,
       totalDays: daysCount,
       initialDayNumber: 1,
+      updatedAt: Date.now(),
       days,
       pool: []
     };
@@ -1174,8 +1375,15 @@ function openDeleteModal(trip) {
 
   deleteBtn.addEventListener('click', () => {
     if (input.value.trim() !== trip.title.trim()) return;
+    recordTripDeletion(trip.id);
     state.trips = state.trips.filter((t) => t.id !== trip.id);
     saveTripsToStorage(state.trips, true);
+    if (state.activeTripId === trip.id) {
+      state.activeTripId = null;
+      if (window.innerWidth >= 860) {
+        autoSelectDefaultTrip();
+      }
+    }
     modal.remove();
     renderApp();
   });
@@ -1304,6 +1512,7 @@ function openDatesModal(trip) {
     modal.querySelector('#applyShiftBtn').addEventListener('click', () => {
       if (shiftStartDate && shiftStartDate !== trip.startDate) {
         trip.startDate = shiftStartDate;
+        touchTrip(trip);
         saveTripsToStorage(state.trips, true);
         renderModalContent();
       }
@@ -1320,6 +1529,7 @@ function openDatesModal(trip) {
         items: []
       });
       trip.totalDays = trip.days.length;
+      touchTrip(trip);
       saveTripsToStorage(state.trips, true);
       renderModalContent();
     });
@@ -1333,6 +1543,7 @@ function openDatesModal(trip) {
         const newTitle = prompt(`Edit title / description for Day ${dayNum}:`, currentTitle);
         if (newTitle !== null) {
           day.routeTitle = newTitle.trim() || `Day ${dayNum}`;
+          touchTrip(trip);
           saveTripsToStorage(state.trips, true);
           renderModalContent();
           renderApp();
@@ -1354,6 +1565,7 @@ function openDatesModal(trip) {
         if (state.activeDayNumber > trip.totalDays) {
           state.activeDayNumber = trip.totalDays;
         }
+        touchTrip(trip);
         saveTripsToStorage(state.trips, true);
         renderModalContent();
       });
@@ -1373,25 +1585,24 @@ function openDatesModal(trip) {
 
 // 7. Config Modal (Credentials & Shareable Link)
 function openConfigModal() {
-  const { dbUrl, tracker, roTracker, isReadOnly } = getStoredCredentials();
+  const { dbUrl, tracker, isReadOnly } = getStoredCredentials();
 
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
 
-  function getShareLink(readOnly) {
-    if (!dbUrl) return window.location.href;
+  function getShareLink() {
+    if (!dbUrl || !tracker) return window.location.href;
     const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set('db', dbUrl);
-    url.searchParams.set('tracker', readOnly ? roTracker : tracker);
-    if (readOnly) url.searchParams.set('ro', 'true');
+    url.searchParams.set('tracker', tracker);
     return url.toString();
   }
 
   modal.innerHTML = `
     <div class="modal-dialog">
-      <h3 class="modal-heading">Firebase Access & Sync</h3>
+      <h3 class="modal-heading">Firebase Sync & Settings</h3>
       <p style="margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.4;">
-        Data is synchronized with Firebase RTDB under <code>trackers/trips/{tracker}</code>. You can configure your Read/Write tracker and a Read-Only tracker for friends.
+        Data is synchronized with Firebase RTDB under <code>trackers/trips/{tracker}</code> across your devices.
       </p>
 
       <form id="configForm" style="display: flex; flex-direction: column; gap: 14px;">
@@ -1401,13 +1612,8 @@ function openConfigModal() {
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="cfgTracker">Tracker Code (Read/Write)</label>
+          <label class="form-label" for="cfgTracker">Tracker Code</label>
           <input class="text-input" id="cfgTracker" placeholder="Tracker code" value="${escapeHtml(tracker)}" />
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="cfgRoTracker">Read-Only Tracker (Optional)</label>
-          <input class="text-input" id="cfgRoTracker" placeholder="Optional read-only tracker" value="${escapeHtml(roTracker)}" />
         </div>
 
         <label style="display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); cursor: pointer;">
@@ -1420,13 +1626,12 @@ function openConfigModal() {
             ? `
           <div style="background: var(--bg-canvas); padding: 12px; border-radius: 8px; border: 1px solid var(--border-card); display: flex; flex-direction: column; gap: 8px;">
             <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted);">
-              Quick Share Links
+              Quick Sync Link
             </span>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button type="button" class="btn-secondary" id="copyRoLinkBtn">Copy Read-Only Link (Friends)</button>
-              <button type="button" class="btn-secondary" id="copyRwLinkBtn">Copy Full Link</button>
+              <button type="button" class="btn-secondary" id="copySyncLinkBtn">Copy Sync Link for Other Devices</button>
             </div>
-            <span id="copyLinkFeedback" style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-green); display: none;">✓ Link copied to clipboard!</span>
+            <span id="copyLinkFeedback" style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-blue); display: none;">✓ Sync link copied to clipboard!</span>
           </div>
         `
             : ''
@@ -1447,7 +1652,6 @@ function openConfigModal() {
     e.preventDefault();
     const newDb = modal.querySelector('#cfgDbUrl').value.trim();
     const newTracker = modal.querySelector('#cfgTracker').value.trim();
-    const newRoTracker = modal.querySelector('#cfgRoTracker').value.trim();
     const newIsRo = modal.querySelector('#cfgIsRo').checked;
 
     if (newDb) {
@@ -1462,30 +1666,14 @@ function openConfigModal() {
       localStorage.removeItem(STORAGE_KEY_TRACKER);
     }
 
-    if (newRoTracker) {
-      localStorage.setItem(STORAGE_KEY_RO_TRACKER, newRoTracker);
-    } else {
-      localStorage.removeItem(STORAGE_KEY_RO_TRACKER);
-    }
-
     localStorage.setItem(STORAGE_KEY_IS_RO, newIsRo ? 'true' : 'false');
 
     modal.remove();
     renderApp();
   });
 
-  modal.querySelector('#copyRoLinkBtn')?.addEventListener('click', async () => {
-    const link = getShareLink(true);
-    await navigator.clipboard.writeText(link);
-    const fb = modal.querySelector('#copyLinkFeedback');
-    if (fb) {
-      fb.style.display = 'block';
-      setTimeout(() => (fb.style.display = 'none'), 2500);
-    }
-  });
-
-  modal.querySelector('#copyRwLinkBtn')?.addEventListener('click', async () => {
-    const link = getShareLink(false);
+  modal.querySelector('#copySyncLinkBtn')?.addEventListener('click', async () => {
+    const link = getShareLink();
     await navigator.clipboard.writeText(link);
     const fb = modal.querySelector('#copyLinkFeedback');
     if (fb) {
@@ -1496,7 +1684,8 @@ function openConfigModal() {
 
   modal.querySelector('#clearAllTripsBtn').addEventListener('click', () => {
     if (confirm('Clear all local trips from this device?')) {
-      saveTripsToStorage([], false);
+      state.trips.forEach((t) => recordTripDeletion(t.id));
+      saveTripsToStorage([], true);
       modal.remove();
       renderApp();
     }
@@ -1927,3 +2116,14 @@ function escapeHtml(str) {
 checkUrlCredentials();
 state.trips = loadTripsFromStorage();
 renderApp();
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (window.innerWidth >= 860 && !state.activeTripId && state.trips.length > 0) {
+      autoSelectDefaultTrip();
+      renderApp();
+    }
+  }, 150);
+});

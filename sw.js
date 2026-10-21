@@ -1,5 +1,5 @@
 // sw.js - Service Worker for Vacation Planner
-const CACHE_NAME = 'vacation-planner-v5';
+const CACHE_NAME = 'vacation-planner-v7';
 
 const CORE_ASSETS = [
   './index.html',
