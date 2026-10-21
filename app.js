@@ -86,123 +86,6 @@ function getDurationFromDates(startDateStr, endDateStr) {
   return Math.max(1, diffDays + 1);
 }
 
-// Initial Mock Seed Data (Prague ➔ Islay & Islay Sunday)
-const DEFAULT_TRIP = {
-  id: 'whisky-show-2027',
-  title: 'Whisky Show 2027',
-  startDate: '2027-09-23',
-  totalDays: 10,
-  initialDayNumber: 3,
-  days: [
-    {
-      id: 'day-1',
-      dayNumber: 1,
-      routeTitle: 'Pre-trip & Packing',
-      items: [{ id: 'd1-1', type: 'alert', time: '18:00', label: 'check-in online & passports check' }]
-    },
-    {
-      id: 'day-2',
-      dayNumber: 2,
-      routeTitle: 'Final preparations',
-      items: [{ id: 'd2-1', type: 'venue', time: '19:00', title: 'Early rest before flight', icon: 'bed' }]
-    },
-    {
-      id: 'day-3',
-      dayNumber: 3,
-      routeTitle: 'Prague ➔ Islay',
-      items: [
-        { id: 'sat-1', type: 'alert', time: '5:00', label: 'departure from hotel' },
-        {
-          id: 'sat-2',
-          type: 'transit_chain',
-          time: '5:15',
-          steps: [
-            { stop: 'Křižíkova', lineBadge: { type: 'metro', label: 'B', sublabel: 'M', bgColor: '#F5B731', textColor: '#1B1300' } },
-            { stop: 'Zličín', lineBadge: { type: 'bus', label: '#100', borderColor: '#6CB8FF', textColor: '#6CB8FF' } },
-            { stop: 'PRG T2', note: 'arrival ~6:15' }
-          ]
-        },
-        { id: 'sat-3', type: 'alert', time: '7:30', label: 'gate closes' },
-        {
-          id: 'sat-4',
-          type: 'transport',
-          mode: 'flight',
-          time: '8:00',
-          badgeLabel: 'Flight · FR1014',
-          badgeColor: '#6CB8FF',
-          from: { label: 'PRG', time: '8:00' },
-          to: { label: 'EDI', time: '10:00' }
-        },
-        { id: 'sat-5', type: 'venue', time: '11:00', title: 'Pick up car', subtitle: 'SIXT · reservation 12345', icon: 'car' },
-        {
-          id: 'sat-6',
-          type: 'transport',
-          mode: 'drive',
-          badgeLabel: 'Drive · estimated 2 hours',
-          badgeColor: '#D4D4D8',
-          from: { label: 'Edinburgh' },
-          to: { label: 'Kennacraig' }
-        },
-        { id: 'sat-7', type: 'alert', time: '15:30', label: 'ferry check-in' },
-        {
-          id: 'sat-8',
-          type: 'transport',
-          mode: 'ferry',
-          time: '16:00',
-          badgeLabel: 'Ferry',
-          badgeColor: '#5ED3C4',
-          from: { label: 'Kennacraig', time: '16:00' },
-          to: { label: 'Islay', time: '18:00' }
-        },
-        { id: 'sat-9', type: 'venue', title: 'Islay Hotel', icon: 'bed' },
-        { id: 'sat-10', type: 'venue', time: '20:00', title: 'Super Bar', icon: 'cocktail' }
-      ]
-    },
-    {
-      id: 'day-4',
-      dayNumber: 4,
-      routeTitle: 'Islay',
-      items: [
-        { id: 'sun-1', type: 'alert', time: '9:00', label: 'leave for Kilchoman' },
-        { id: 'sun-2', type: 'venue', time: '9:30', title: 'Kilchoman', subtitle: 'visit and brunch', icon: 'pin' },
-        { id: 'sun-3', type: 'alert', time: '10:30', label: 'leave for Bruichladdich' },
-        { id: 'sun-4', type: 'alert', time: '11:00', label: 'check-in Bruichladdich' },
-        {
-          id: 'sun-5',
-          type: 'venue',
-          time: '11:15',
-          title: 'Bruichladdich',
-          subtitle: 'Warehouse # Experience',
-          timeWindow: '11:15–13:30',
-          icon: 'pin'
-        }
-      ]
-    },
-    { id: 'day-5', dayNumber: 5, routeTitle: 'Islay Distilleries South', items: [] },
-    { id: 'day-6', dayNumber: 6, routeTitle: 'Bowmore & Central', items: [] },
-    { id: 'day-7', dayNumber: 7, routeTitle: 'Jura Excursion', items: [] },
-    { id: 'day-8', dayNumber: 8, routeTitle: 'Islay North & Port Askaig', items: [] },
-    { id: 'day-9', dayNumber: 9, routeTitle: 'Return to Edinburgh', items: [] },
-    { id: 'day-10', dayNumber: 10, routeTitle: 'Edinburgh ➔ Prague', items: [] }
-  ],
-  pool: [
-    { id: 'p-1', title: 'Meet Marion', icon: 'user', tags: [{ icon: 'calendar', text: 'Sat–Tue', variant: 'neutral' }], applicableDays: [3, 4, 5, 6] },
-    {
-      id: 'p-2',
-      title: 'Visit Bowmore',
-      icon: 'pin',
-      tags: [
-        { icon: 'calendar', text: 'Any day', variant: 'neutral' },
-        { icon: 'clock', text: '12:00–15:00', variant: 'blue' },
-        { icon: 'check', text: 'free 13:30–15:00', variant: 'green' }
-      ],
-      applicableDays: [3, 4, 5, 6, 7]
-    },
-    { id: 'p-3', title: 'Watch fireworks', icon: 'sparkles', tags: [{ icon: 'calendar', text: 'Today only', variant: 'amber' }, { icon: 'clock', text: '22:00', variant: 'blue' }], applicableDays: [3] },
-    { id: 'p-4', title: 'Disco at Oldies pub', icon: 'music', tags: [{ icon: 'calendar', text: 'Sunday only', variant: 'amber' }, { icon: 'clock', text: '23:00', variant: 'blue' }], applicableDays: [4] }
-  ]
-};
-
 // SVG Icon Helper
 function getSvgIcon(name, size = 18, color = 'currentColor', strokeWidth = 1.75) {
   const common = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"`;
@@ -284,9 +167,9 @@ function checkUrlCredentials() {
 
 function getStoredCredentials() {
   const dbUrl = localStorage.getItem(STORAGE_KEY_DB_URL) || '';
-  const tracker = localStorage.getItem(STORAGE_KEY_TRACKER) || 'secrettrackerforRWacess';
-  const roTracker = localStorage.getItem(STORAGE_KEY_RO_TRACKER) || 'secrettrackerforROacess';
-  const isReadOnly = localStorage.getItem(STORAGE_KEY_IS_RO) === 'true' || tracker.endsWith('_ro');
+  const tracker = localStorage.getItem(STORAGE_KEY_TRACKER) || '';
+  const roTracker = localStorage.getItem(STORAGE_KEY_RO_TRACKER) || '';
+  const isReadOnly = localStorage.getItem(STORAGE_KEY_IS_RO) === 'true' || (tracker && tracker.endsWith('_ro'));
   return { dbUrl, tracker, roTracker, isReadOnly };
 }
 
@@ -296,15 +179,14 @@ function loadTripsFromStorage() {
     const raw = localStorage.getItem(STORAGE_KEY_TRIPS);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
   } catch (err) {
     console.warn('Failed to parse stored trips:', err);
   }
-  saveTripsToStorage([DEFAULT_TRIP], false);
-  return [DEFAULT_TRIP];
+  return [];
 }
 
 function saveTripsToStorage(trips, markDirty = true) {
@@ -456,29 +338,34 @@ function renderApp() {
 // 1. Home Screen
 function renderHomeView({ isReadOnly, dbUrl, dirty, formattedSync }) {
   let tripsHtml = '';
-  state.trips.forEach((trip) => {
-    const range = formatDateRange(trip.startDate, trip.totalDays);
-    tripsHtml += `
-      <div class="trip-card" data-trip-id="${trip.id}">
-        <div class="trip-card-header">
-          <h3 class="trip-card-title">${escapeHtml(trip.title)}</h3>
-          <span class="badge-pill">${trip.totalDays} days</span>
-        </div>
-        <div class="trip-card-dates">
-          ${getSvgIcon('calendar', 14, 'var(--text-secondary)')}
-          <span>${range}</span>
-        </div>
-        <div class="trip-card-footer">
-          <span class="card-action-link">View Itinerary &rsaquo;</span>
-          ${
-            state.trips.length > 1
-              ? `<button type="button" class="card-delete-btn" data-delete-id="${trip.id}" title="Delete trip">Delete</button>`
-              : ''
-          }
-        </div>
+  if (state.trips.length === 0) {
+    tripsHtml = `
+      <div style="padding: 40px 16px; text-align: center; background: var(--bg-card); border: 1.5px dashed var(--border-dashed); border-radius: var(--radius-card); display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <span style="font-size: 15px; font-weight: 600; color: var(--text-secondary);">No vacations planned yet</span>
+        <span style="font-size: 13px; color: var(--text-muted);">Click "Plan New Trip" above to start your first itinerary.</span>
       </div>
     `;
-  });
+  } else {
+    state.trips.forEach((trip) => {
+      const range = formatDateRange(trip.startDate, trip.totalDays);
+      tripsHtml += `
+        <div class="trip-card" data-trip-id="${trip.id}">
+          <div class="trip-card-header">
+            <h3 class="trip-card-title">${escapeHtml(trip.title)}</h3>
+            <span class="badge-pill">${trip.totalDays} days</span>
+          </div>
+          <div class="trip-card-dates">
+            ${getSvgIcon('calendar', 14, 'var(--text-secondary)')}
+            <span>${range}</span>
+          </div>
+          <div class="trip-card-footer">
+            <span class="card-action-link">View Itinerary &rsaquo;</span>
+            <button type="button" class="card-delete-btn" data-delete-id="${trip.id}" title="Delete trip">Delete</button>
+          </div>
+        </div>
+      `;
+    });
+  }
 
   root.innerHTML = `
     <div class="app-container">
@@ -1365,17 +1252,17 @@ function openConfigModal() {
       <form id="configForm" style="display: flex; flex-direction: column; gap: 14px;">
         <div class="form-group">
           <label class="form-label" for="cfgDbUrl">Firebase RTDB URL</label>
-          <input class="text-input" id="cfgDbUrl" placeholder="https://your-project-default-rtdb.europe-west1.firebasedatabase.app" value="${escapeHtml(dbUrl)}" />
+          <input class="text-input" id="cfgDbUrl" placeholder="https://your-project.firebasedatabase.app" value="${escapeHtml(dbUrl)}" />
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="cfgTracker">Active Tracker (Key)</label>
-          <input class="text-input" id="cfgTracker" placeholder="secrettrackerforRWacess" value="${escapeHtml(tracker)}" />
+          <label class="form-label" for="cfgTracker">Tracker Code (Read/Write)</label>
+          <input class="text-input" id="cfgTracker" placeholder="Tracker code" value="${escapeHtml(tracker)}" />
         </div>
 
         <div class="form-group">
           <label class="form-label" for="cfgRoTracker">Read-Only Tracker (Optional)</label>
-          <input class="text-input" id="cfgRoTracker" placeholder="secrettrackerforROacess" value="${escapeHtml(roTracker)}" />
+          <input class="text-input" id="cfgRoTracker" placeholder="Optional read-only tracker" value="${escapeHtml(roTracker)}" />
         </div>
 
         <label style="display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); cursor: pointer;">
@@ -1384,7 +1271,7 @@ function openConfigModal() {
         </label>
 
         ${
-          dbUrl
+          dbUrl && tracker
             ? `
           <div style="background: var(--bg-canvas); padding: 12px; border-radius: 8px; border: 1px solid var(--border-card); display: flex; flex-direction: column; gap: 8px;">
             <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted);">
@@ -1401,7 +1288,7 @@ function openConfigModal() {
         }
 
         <div class="dialog-actions">
-          <button type="button" class="btn-secondary" id="resetMockDataBtn" style="color: var(--accent-alert); border-color: rgba(255, 107, 94, 0.4); margin-right: auto;">Reset Sample Data</button>
+          <button type="button" class="btn-secondary" id="clearAllTripsBtn" style="color: var(--accent-alert); border-color: rgba(255, 107, 94, 0.4); margin-right: auto;">Clear All Trips</button>
           <button type="button" class="btn-secondary" id="cancelConfigBtn">Close</button>
           <button type="submit" class="btn-secondary" style="background: var(--accent-blue); color: #09090b; border: none;">Save</button>
         </div>
@@ -1414,8 +1301,8 @@ function openConfigModal() {
   modal.querySelector('#configForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const newDb = modal.querySelector('#cfgDbUrl').value.trim();
-    const newTracker = modal.querySelector('#cfgTracker').value.trim() || 'secrettrackerforRWacess';
-    const newRoTracker = modal.querySelector('#cfgRoTracker').value.trim() || 'secrettrackerforROacess';
+    const newTracker = modal.querySelector('#cfgTracker').value.trim();
+    const newRoTracker = modal.querySelector('#cfgRoTracker').value.trim();
     const newIsRo = modal.querySelector('#cfgIsRo').checked;
 
     if (newDb) {
@@ -1424,8 +1311,18 @@ function openConfigModal() {
       localStorage.removeItem(STORAGE_KEY_DB_URL);
     }
 
-    localStorage.setItem(STORAGE_KEY_TRACKER, newTracker);
-    localStorage.setItem(STORAGE_KEY_RO_TRACKER, newRoTracker);
+    if (newTracker) {
+      localStorage.setItem(STORAGE_KEY_TRACKER, newTracker);
+    } else {
+      localStorage.removeItem(STORAGE_KEY_TRACKER);
+    }
+
+    if (newRoTracker) {
+      localStorage.setItem(STORAGE_KEY_RO_TRACKER, newRoTracker);
+    } else {
+      localStorage.removeItem(STORAGE_KEY_RO_TRACKER);
+    }
+
     localStorage.setItem(STORAGE_KEY_IS_RO, newIsRo ? 'true' : 'false');
 
     modal.remove();
@@ -1452,9 +1349,9 @@ function openConfigModal() {
     }
   });
 
-  modal.querySelector('#resetMockDataBtn').addEventListener('click', () => {
-    if (confirm('Reset trips and ideas back to reference mockups?')) {
-      saveTripsToStorage([DEFAULT_TRIP], false);
+  modal.querySelector('#clearAllTripsBtn').addEventListener('click', () => {
+    if (confirm('Clear all local trips from this device?')) {
+      saveTripsToStorage([], false);
       modal.remove();
       renderApp();
     }
