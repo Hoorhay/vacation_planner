@@ -120,6 +120,138 @@ function getTripDateStatus(trip) {
   }
 }
 
+function sortDayItems(items) {
+  if (!items || !Array.isArray(items)) return [];
+  return items.slice().sort((a, b) => {
+    if (!a.time && !b.time) return 0;
+    if (!a.time) return 1;
+    if (!b.time) return -1;
+    const toMinutes = (t) => {
+      const match = String(t).match(/^(\d{1,2}):(\d{2})/);
+      if (!match) return 9999;
+      return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+    };
+    return toMinutes(a.time) - toMinutes(b.time);
+  });
+}
+
+// Reference Mockup Seed (Prague ➔ Islay / Whisky Show 2027)
+const DEMO_TRIP = {
+  id: 'whisky-show-2027',
+  title: 'Whisky Show 2027',
+  startDate: '2027-09-23',
+  totalDays: 10,
+  initialDayNumber: 3,
+  days: [
+    {
+      id: 'day-1',
+      dayNumber: 1,
+      routeTitle: 'Pre-trip & Packing',
+      items: [{ id: 'd1-1', type: 'alert', time: '18:00', label: 'check-in online & passports check' }]
+    },
+    {
+      id: 'day-2',
+      dayNumber: 2,
+      routeTitle: 'Final preparations',
+      items: [{ id: 'd2-1', type: 'venue', time: '19:00', title: 'Early rest before flight', icon: 'bed' }]
+    },
+    {
+      id: 'day-3',
+      dayNumber: 3,
+      routeTitle: 'Prague ➔ Islay',
+      items: [
+        { id: 'sat-1', type: 'alert', time: '05:00', label: 'departure from hotel' },
+        {
+          id: 'sat-2',
+          type: 'transit_chain',
+          time: '05:15',
+          steps: [
+            { stop: 'Křižíkova', lineBadge: { type: 'metro', label: 'B', sublabel: 'M', bgColor: '#F5B731', textColor: '#1B1300' } },
+            { stop: 'Zličín', lineBadge: { type: 'bus', label: '#100', borderColor: '#6CB8FF', textColor: '#6CB8FF' } },
+            { stop: 'PRG T2', note: 'arrival ~6:15' }
+          ]
+        },
+        { id: 'sat-3', type: 'alert', time: '07:30', label: 'gate closes' },
+        {
+          id: 'sat-4',
+          type: 'transport',
+          mode: 'flight',
+          time: '08:00',
+          badgeLabel: 'Flight · FR1014',
+          badgeColor: '#6CB8FF',
+          from: { label: 'PRG', time: '08:00' },
+          to: { label: 'EDI', time: '10:00' }
+        },
+        { id: 'sat-5', type: 'venue', time: '11:00', title: 'Pick up car', subtitle: 'SIXT · reservation 12345', icon: 'car' },
+        {
+          id: 'sat-6',
+          type: 'transport',
+          mode: 'drive',
+          badgeLabel: 'Drive · estimated 2 hours',
+          badgeColor: '#D4D4D8',
+          from: { label: 'Edinburgh' },
+          to: { label: 'Kennacraig' }
+        },
+        { id: 'sat-7', type: 'alert', time: '15:30', label: 'ferry check-in' },
+        {
+          id: 'sat-8',
+          type: 'transport',
+          mode: 'ferry',
+          time: '16:00',
+          badgeLabel: 'Ferry',
+          badgeColor: '#5ED3C4',
+          from: { label: 'Kennacraig', time: '16:00' },
+          to: { label: 'Islay', time: '18:00' }
+        },
+        { id: 'sat-9', type: 'venue', title: 'Islay Hotel', icon: 'bed' },
+        { id: 'sat-10', type: 'venue', time: '20:00', title: 'Super Bar', icon: 'cocktail' }
+      ]
+    },
+    {
+      id: 'day-4',
+      dayNumber: 4,
+      routeTitle: 'Islay',
+      items: [
+        { id: 'sun-1', type: 'alert', time: '09:00', label: 'leave for Kilchoman' },
+        { id: 'sun-2', type: 'venue', time: '09:30', title: 'Kilchoman', subtitle: 'visit and brunch', icon: 'pin' },
+        { id: 'sun-3', type: 'alert', time: '10:30', label: 'leave for Bruichladdich' },
+        { id: 'sun-4', type: 'alert', time: '11:00', label: 'check-in Bruichladdich' },
+        {
+          id: 'sun-5',
+          type: 'venue',
+          time: '11:15',
+          title: 'Bruichladdich',
+          subtitle: 'Warehouse # Experience',
+          timeWindow: '11:15–13:30',
+          icon: 'pin'
+        }
+      ]
+    },
+    { id: 'day-5', dayNumber: 5, routeTitle: 'Islay Distilleries South', items: [] },
+    { id: 'day-6', dayNumber: 6, routeTitle: 'Bowmore & Central', items: [] },
+    { id: 'day-7', dayNumber: 7, routeTitle: 'Jura Excursion', items: [] },
+    { id: 'day-8', dayNumber: 8, routeTitle: 'Islay North & Port Askaig', items: [] },
+    { id: 'day-9', dayNumber: 9, routeTitle: 'Return to Edinburgh', items: [] },
+    { id: 'day-10', dayNumber: 10, routeTitle: 'Edinburgh ➔ Prague', items: [] }
+  ],
+  pool: [
+    { id: 'p-1', title: 'Meet Marion', icon: 'user', tags: [{ icon: 'calendar', text: 'Sat–Tue', variant: 'neutral' }], applicableDays: [3, 4, 5, 6] },
+    {
+      id: 'p-2',
+      title: 'Visit Bowmore',
+      icon: 'pin',
+      tags: [
+        { icon: 'calendar', text: 'Any day', variant: 'neutral' },
+        { icon: 'clock', text: '12:00–15:00', variant: 'blue' },
+        { icon: 'check', text: 'free 13:30–15:00', variant: 'green' }
+      ],
+      applicableDays: [3, 4, 5, 6, 7]
+    },
+    { id: 'p-3', title: 'Watch fireworks', icon: 'sparkles', tags: [{ icon: 'calendar', text: 'Today only', variant: 'amber' }, { icon: 'clock', text: '22:00', variant: 'blue' }], applicableDays: [3] },
+    { id: 'p-4', title: 'Disco at Oldies pub', icon: 'music', tags: [{ icon: 'calendar', text: 'Sunday only', variant: 'amber' }, { icon: 'clock', text: '23:00', variant: 'blue' }], applicableDays: [4] }
+  ]
+};
+
 // SVG Icon Helper
 function getSvgIcon(name, size = 18, color = 'currentColor', strokeWidth = 1.75) {
   const common = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"`;
@@ -143,6 +275,8 @@ function getSvgIcon(name, size = 18, color = 'currentColor', strokeWidth = 1.75)
       return `<svg ${common}><path d="M3 18V6"/><path d="M3 14h18v4"/><path d="M21 14v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11" r="1.75"/></svg>`;
     case 'cocktail':
       return `<svg ${common}><path d="M6 4h12l-1.4 14.2a1.5 1.5 0 0 1-1.5 1.3H8.9a1.5 1.5 0 0 1-1.5-1.3z"/><path d="M6.8 10.5h10.4"/></svg>`;
+    case 'coffee':
+      return `<svg ${common}><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`;
     case 'user':
       return `<svg ${common}><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>`;
     case 'calendar':
@@ -731,7 +865,17 @@ function renderItineraryView(trip, { isReadOnly, dbUrl, dirty, formattedSync }) 
         </div>
         ${
           !isReadOnly
-            ? `<button type="button" class="add-btn" data-add-idea-id="${idea.id}" title="Add to today">${getSvgIcon('plus', 18, 'var(--accent-blue)', 2.25)}</button>`
+            ? `
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <button type="button" class="icon-btn edit-idea-btn" data-edit-idea-id="${idea.id}" title="Edit idea" style="padding: 4px 6px;">
+                ${getSvgIcon('pencil', 12, 'currentColor')}
+              </button>
+              <button type="button" class="icon-btn delete-idea-btn" data-delete-idea-id="${idea.id}" title="Delete idea" style="padding: 4px 6px;">
+                &#10005;
+              </button>
+              <button type="button" class="add-btn" data-add-idea-id="${idea.id}" title="Add to today">${getSvgIcon('plus', 18, 'var(--accent-blue)', 2.25)}</button>
+            </div>
+          `
             : ''
         }
       </li>
@@ -803,12 +947,57 @@ function renderItineraryView(trip, { isReadOnly, dbUrl, dirty, formattedSync }) 
         </div>
       </header>
 
-      <ol class="timeline-list">${timelineHtml}</ol>
+      ${
+        activeDay.items.length === 0
+          ? `
+          <div class="empty-day-state">
+            <span style="font-size: 14px; font-weight: 600; color: var(--text-secondary);">No events scheduled yet for Day ${activeDay.dayNumber}</span>
+            <p style="font-size: 13px; color: var(--text-muted); margin: 0;">Add an activity, travel leg, or deadline, or promote from the pool below.</p>
+            ${
+              !isReadOnly
+                ? `
+              <button type="button" class="primary-btn" id="addEventEmptyBtn" style="height: 38px; font-size: 13px; max-width: 220px; margin-top: 4px;">
+                ${getSvgIcon('plus', 14, '#09090b', 2.5)}
+                Add Event
+              </button>
+            `
+                : ''
+            }
+          </div>
+        `
+          : `
+          <ol class="timeline-list">${timelineHtml}</ol>
+          ${
+            !isReadOnly
+              ? `
+            <div style="margin: 14px 0 28px;">
+              <button type="button" class="add-event-btn" id="addEventBtn">
+                ${getSvgIcon('plus', 13, 'var(--accent-blue)', 2.5)}
+                <span>Add Event to Day ${activeDay.dayNumber}</span>
+              </button>
+            </div>
+          `
+              : ''
+          }
+        `
+      }
 
       <section class="pool-section">
         <div class="pool-header">
-          <h2 class="pool-title">Pool for today</h2>
-          <span class="pool-count">${activeIdeas.length}</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h2 class="pool-title">Pool for today</h2>
+            <span class="pool-count">${activeIdeas.length}</span>
+          </div>
+          ${
+            !isReadOnly
+              ? `
+            <button type="button" class="icon-btn" id="addPoolIdeaBtn" style="color: var(--accent-blue); padding: 4px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+              ${getSvgIcon('plus', 12, 'var(--accent-blue)', 2.5)}
+              Add Idea
+            </button>
+          `
+              : ''
+          }
         </div>
         ${activeIdeas.length === 0 ? `<p style="font-family: var(--font-mono); font-size: 12px; color: var(--text-muted);">No candidate ideas for today.</p>` : `<ul class="pool-list">${poolHtml}</ul>`}
       </section>
@@ -822,6 +1011,7 @@ function renderTimelineItem(item, isFirst, isLast) {
   let timeClass = 'simple';
   let dotClass = 'simple';
   let contentHtml = '';
+  const { isReadOnly } = getStoredCredentials();
 
   if (item.type === 'alert') {
     timeClass = 'alert';
@@ -932,7 +1122,27 @@ function renderTimelineItem(item, isFirst, isLast) {
         <div class="track-line ${isFirst ? 'first' : ''} ${isLast ? 'last' : ''}"></div>
         <div class="node-dot ${dotClass}"></div>
       </div>
-      <div class="content-col ${isLast ? 'last' : ''}">${contentHtml}</div>
+      <div class="content-col ${isLast ? 'last' : ''}">
+        <div class="timeline-item-wrapper">
+          <div class="timeline-item-body" data-edit-item-id="${item.id}" title="${!isReadOnly ? 'Click to edit event' : ''}">
+            ${contentHtml}
+          </div>
+          ${
+            !isReadOnly
+              ? `
+              <div class="timeline-item-actions">
+                <button type="button" class="icon-btn edit-item-btn" data-edit-item-id="${item.id}" title="Edit event" style="padding: 3px 6px;">
+                  ${getSvgIcon('pencil', 12, 'currentColor')}
+                </button>
+                <button type="button" class="icon-btn delete-item-btn" data-delete-item-id="${item.id}" title="Delete event" style="padding: 3px 6px;">
+                  &#10005;
+                </button>
+              </div>
+            `
+              : ''
+          }
+        </div>
+      </div>
     </li>
   `;
 }
@@ -1024,7 +1234,63 @@ function attachTripListeners(trip) {
 
   document.getElementById('datesModalBtn')?.addEventListener('click', () => openDatesModal(trip));
 
-  // Idea promotion
+  // Add Event to Day
+  const onAddEvent = () => {
+    const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
+    openEventModal(trip, activeDay, null);
+  };
+  document.getElementById('addEventBtn')?.addEventListener('click', onAddEvent);
+  document.getElementById('addEventEmptyBtn')?.addEventListener('click', onAddEvent);
+
+  // Edit / Delete timeline items
+  document.querySelectorAll('[data-edit-item-id]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-delete-item-id]')) return;
+      const itemId = el.getAttribute('data-edit-item-id');
+      const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
+      const item = activeDay.items.find((i) => i.id === itemId);
+      if (item) openEventModal(trip, activeDay, item);
+    });
+  });
+
+  document.querySelectorAll('[data-delete-item-id]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const itemId = btn.getAttribute('data-delete-item-id');
+      const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
+      activeDay.items = activeDay.items.filter((i) => i.id !== itemId);
+      touchTrip(trip);
+      saveTripsToStorage(state.trips, true);
+      renderApp();
+    });
+  });
+
+  // Pool idea management
+  document.getElementById('addPoolIdeaBtn')?.addEventListener('click', () => {
+    openIdeaModal(trip, null);
+  });
+
+  document.querySelectorAll('[data-edit-idea-id]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const ideaId = btn.getAttribute('data-edit-idea-id');
+      const idea = trip.pool.find((i) => i.id === ideaId);
+      if (idea) openIdeaModal(trip, idea);
+    });
+  });
+
+  document.querySelectorAll('[data-delete-idea-id]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const ideaId = btn.getAttribute('data-delete-idea-id');
+      trip.pool = trip.pool.filter((i) => i.id !== ideaId);
+      touchTrip(trip);
+      saveTripsToStorage(state.trips, true);
+      renderApp();
+    });
+  });
+
+  // Idea promotion to timeline
   document.querySelectorAll('[data-add-idea-id]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const ideaId = btn.getAttribute('data-add-idea-id');
@@ -1045,6 +1311,7 @@ function attachTripListeners(trip) {
         icon: idea.icon || 'pin'
       });
 
+      activeDay.items = sortDayItems(activeDay.items);
       trip.pool = trip.pool.filter((i) => i.id !== idea.id);
       touchTrip(trip);
       saveTripsToStorage(state.trips, true);
@@ -1638,7 +1905,8 @@ function openConfigModal() {
         }
 
         <div class="dialog-actions">
-          <button type="button" class="btn-secondary" id="clearAllTripsBtn" style="color: var(--accent-alert); border-color: rgba(255, 107, 94, 0.4); margin-right: auto;">Clear All Trips</button>
+          <button type="button" class="btn-secondary" id="loadDemoTripBtn" style="color: var(--accent-blue); border-color: rgba(56, 189, 248, 0.4); margin-right: 6px;">Load Demo Trip</button>
+          <button type="button" class="btn-secondary" id="clearAllTripsBtn" style="color: var(--accent-alert); border-color: rgba(255, 107, 94, 0.4); margin-right: auto;">Clear All</button>
           <button type="button" class="btn-secondary" id="cancelConfigBtn">Close</button>
           <button type="submit" class="btn-secondary" style="background: var(--accent-blue); color: #09090b; border: none;">Save</button>
         </div>
@@ -1668,6 +1936,22 @@ function openConfigModal() {
 
     localStorage.setItem(STORAGE_KEY_IS_RO, newIsRo ? 'true' : 'false');
 
+    modal.remove();
+    renderApp();
+  });
+
+  modal.querySelector('#loadDemoTripBtn')?.addEventListener('click', () => {
+    const existingIndex = state.trips.findIndex((t) => t.id === DEMO_TRIP.id);
+    const demoCopy = JSON.parse(JSON.stringify(DEMO_TRIP));
+    demoCopy.updatedAt = Date.now();
+    if (existingIndex >= 0) {
+      state.trips[existingIndex] = demoCopy;
+    } else {
+      state.trips.push(demoCopy);
+    }
+    saveTripsToStorage(state.trips, true);
+    state.activeTripId = demoCopy.id;
+    state.activeDayNumber = 3;
     modal.remove();
     renderApp();
   });
@@ -2095,6 +2379,395 @@ function openShareModal(trip, initialDayNumber) {
 
   document.body.appendChild(modal);
   renderShareContent();
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+}
+
+// 9. Day Event Planning Modal (Activity, Alert, Transport, Transit Chain)
+function openEventModal(trip, activeDay, existingItem) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'eventModal';
+
+  let currentType = existingItem ? existingItem.type : 'venue';
+  let selectedIcon = existingItem ? (existingItem.icon || 'pin') : 'pin';
+  let transportMode = existingItem && existingItem.type === 'transport' ? (existingItem.mode || 'flight') : 'flight';
+
+  function renderModal() {
+    modal.innerHTML = `
+      <div class="modal-dialog">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <h3 class="modal-heading">${existingItem ? 'Edit Event' : `Add Event to Day ${activeDay.dayNumber}`}</h3>
+          <button type="button" style="color: var(--text-muted); cursor: pointer;" id="cancelEventModalBtn">&#10005;</button>
+        </div>
+
+        <div class="event-type-tabs">
+          <button type="button" class="event-type-btn ${currentType === 'venue' ? 'active' : ''}" data-type="venue">📍 Activity</button>
+          <button type="button" class="event-type-btn ${currentType === 'alert' ? 'active' : ''}" data-type="alert">⏰ Alert</button>
+          <button type="button" class="event-type-btn ${currentType === 'transport' ? 'active' : ''}" data-type="transport">✈️ Travel Leg</button>
+          <button type="button" class="event-type-btn ${currentType === 'transit_chain' ? 'active' : ''}" data-type="transit_chain">🚇 Transit</button>
+        </div>
+
+        <form id="eventForm" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- Time Field -->
+          <div class="form-group">
+            <label class="form-label" for="eventTime">Scheduled Time (optional)</label>
+            <input class="text-input" id="eventTime" placeholder="e.g. 09:30 or 15:00" value="${escapeHtml(existingItem ? (existingItem.time || '') : '')}" />
+          </div>
+
+          ${
+            currentType === 'venue'
+              ? `
+            <div class="form-group">
+              <label class="form-label" for="venueTitle">Title / Venue *</label>
+              <input class="text-input" id="venueTitle" required placeholder="e.g. Kilchoman, Islay Hotel, Super Bar" value="${escapeHtml(existingItem?.title || '')}" autofocus />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="venueSubtitle">Subtitle / Note (optional)</label>
+              <input class="text-input" id="venueSubtitle" placeholder="e.g. visit and brunch, SIXT reservation 12345" value="${escapeHtml(existingItem?.subtitle || '')}" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="venueTimeWindow">Time Window / Duration</label>
+              <input class="text-input" id="venueTimeWindow" placeholder="e.g. 11:15–13:30 or 2 hours" value="${escapeHtml(existingItem?.timeWindow || '')}" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Icon</label>
+              <div class="icon-picker-grid">
+                ${['pin', 'bed', 'cocktail', 'car', 'coffee', 'user', 'music', 'sparkles', 'calendar']
+                  .map(
+                    (ic) => `
+                  <button type="button" class="icon-picker-btn ${selectedIcon === ic ? 'active' : ''}" data-icon="${ic}" title="${ic}">
+                    ${getSvgIcon(ic, 18, selectedIcon === ic ? 'var(--accent-blue)' : 'currentColor')}
+                  </button>
+                `
+                  )
+                  .join('')}
+              </div>
+            </div>
+          `
+              : currentType === 'alert'
+              ? `
+            <div class="form-group">
+              <label class="form-label" for="alertLabel">Alert / Deadline Message *</label>
+              <input class="text-input" id="alertLabel" required placeholder="e.g. departure from hotel, gate closes, ferry check-in" value="${escapeHtml(existingItem?.label || '')}" autofocus />
+            </div>
+          `
+              : currentType === 'transport'
+              ? `
+            <div class="form-group">
+              <label class="form-label">Mode</label>
+              <div class="event-type-tabs">
+                <button type="button" class="event-type-btn ${transportMode === 'flight' ? 'active' : ''}" data-mode="flight">✈️ Flight</button>
+                <button type="button" class="event-type-btn ${transportMode === 'drive' ? 'active' : ''}" data-mode="drive">🚗 Drive</button>
+                <button type="button" class="event-type-btn ${transportMode === 'ferry' ? 'active' : ''}" data-mode="ferry">⛴️ Ferry</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="transportBadge">Header Badge *</label>
+              <input class="text-input" id="transportBadge" required placeholder="e.g. Flight · FR1014, Drive · estimated 2 hours, Ferry" value="${escapeHtml(existingItem?.badgeLabel || (transportMode === 'flight' ? 'Flight' : transportMode === 'ferry' ? 'Ferry' : 'Drive'))}" />
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="form-group">
+                <label class="form-label" for="fromLabel">Origin (From) *</label>
+                <input class="text-input" id="fromLabel" required placeholder="e.g. PRG or Edinburgh" value="${escapeHtml(existingItem?.from?.label || '')}" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="fromTime">Origin Time</label>
+                <input class="text-input" id="fromTime" placeholder="e.g. 08:00" value="${escapeHtml(existingItem?.from?.time || '')}" />
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="form-group">
+                <label class="form-label" for="toLabel">Destination (To) *</label>
+                <input class="text-input" id="toLabel" required placeholder="e.g. EDI or Kennacraig" value="${escapeHtml(existingItem?.to?.label || '')}" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="toTime">Destination Time</label>
+                <input class="text-input" id="toTime" placeholder="e.g. 10:00" value="${escapeHtml(existingItem?.to?.time || '')}" />
+              </div>
+            </div>
+          `
+              : `
+            <div class="form-group">
+              <label class="form-label" for="transitStepsRaw">Transit Stops (One per line)</label>
+              <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 6px;">Format: <code>Stop Name (Line or Note)</code></p>
+              <textarea class="text-input" id="transitStepsRaw" rows="4" style="height: auto; resize: vertical;" placeholder="Křižíkova (Metro B)&#10;Zličín (Bus 100)&#10;PRG T2 (arrival ~6:15)">${
+                existingItem?.steps
+                  ? existingItem.steps.map((s) => `${s.stop}${s.lineBadge?.label ? ` (${s.lineBadge.label})` : s.note ? ` (${s.note})` : ''}`).join('\n')
+                  : ''
+              }</textarea>
+            </div>
+          `
+          }
+
+          <div class="dialog-actions">
+            ${
+              existingItem
+                ? `<button type="button" class="btn-secondary" id="modalDeleteEventBtn" style="color: var(--accent-alert); border-color: rgba(255, 107, 94, 0.4); margin-right: auto;">Delete</button>`
+                : ''
+            }
+            <button type="button" class="btn-secondary" id="cancelEventFormBtn">Cancel</button>
+            <button type="submit" class="btn-secondary" style="background: var(--accent-blue); color: #09090b; border: none; font-weight: 600;">Save Event</button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    attachModalHandlers();
+  }
+
+  function attachModalHandlers() {
+    modal.querySelector('#cancelEventModalBtn').addEventListener('click', () => modal.remove());
+    modal.querySelector('#cancelEventFormBtn').addEventListener('click', () => modal.remove());
+
+    modal.querySelectorAll('.event-type-btn[data-type]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        currentType = btn.getAttribute('data-type');
+        renderModal();
+      });
+    });
+
+    modal.querySelectorAll('.event-type-btn[data-mode]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        transportMode = btn.getAttribute('data-mode');
+        renderModal();
+      });
+    });
+
+    modal.querySelectorAll('.icon-picker-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        selectedIcon = btn.getAttribute('data-icon');
+        modal.querySelectorAll('.icon-picker-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    modal.querySelector('#modalDeleteEventBtn')?.addEventListener('click', () => {
+      activeDay.items = activeDay.items.filter((i) => i.id !== existingItem.id);
+      touchTrip(trip);
+      saveTripsToStorage(state.trips, true);
+      modal.remove();
+      renderApp();
+    });
+
+    modal.querySelector('#eventForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const timeVal = modal.querySelector('#eventTime').value.trim();
+
+      let newItem = existingItem || { id: `event-${Date.now()}` };
+      newItem.time = timeVal || undefined;
+
+      if (currentType === 'venue') {
+        newItem.type = 'venue';
+        newItem.title = modal.querySelector('#venueTitle').value.trim();
+        const sub = modal.querySelector('#venueSubtitle').value.trim();
+        newItem.subtitle = sub || undefined;
+        const tw = modal.querySelector('#venueTimeWindow').value.trim();
+        newItem.timeWindow = tw || undefined;
+        newItem.icon = selectedIcon;
+      } else if (currentType === 'alert') {
+        newItem.type = 'alert';
+        newItem.label = modal.querySelector('#alertLabel').value.trim();
+      } else if (currentType === 'transport') {
+        newItem.type = 'transport';
+        newItem.mode = transportMode;
+        newItem.badgeLabel = modal.querySelector('#transportBadge').value.trim();
+        newItem.badgeColor = transportMode === 'flight' ? '#6cb8ff' : transportMode === 'ferry' ? '#5ed3c4' : '#d4d4d8';
+        newItem.from = {
+          label: modal.querySelector('#fromLabel').value.trim(),
+          time: modal.querySelector('#fromTime').value.trim() || undefined
+        };
+        newItem.to = {
+          label: modal.querySelector('#toLabel').value.trim(),
+          time: modal.querySelector('#toTime').value.trim() || undefined
+        };
+      } else if (currentType === 'transit_chain') {
+        newItem.type = 'transit_chain';
+        const rawLines = modal.querySelector('#transitStepsRaw').value.split('\n').filter(Boolean);
+        newItem.steps = rawLines.map((line) => {
+          const m = line.match(/^([^(]+)(?:\(([^)]+)\))?/);
+          const stop = m ? m[1].trim() : line.trim();
+          const tag = m && m[2] ? m[2].trim() : null;
+          let lineBadge = undefined;
+          let note = undefined;
+          if (tag) {
+            if (/metro\s*([a-z0-9]+)/i.test(tag) || /^[a-c]$/i.test(tag)) {
+              const letter = tag.replace(/metro/i, '').trim() || 'A';
+              lineBadge = { type: 'metro', label: letter.toUpperCase(), sublabel: 'M', bgColor: '#F5B731', textColor: '#1B1300' };
+            } else if (/bus\s*#?([0-9]+)/i.test(tag) || /^[0-9]+$/.test(tag)) {
+              const num = tag.replace(/bus/i, '').replace('#', '').trim();
+              lineBadge = { type: 'bus', label: `#${num}`, borderColor: '#6CB8FF', textColor: '#6CB8FF' };
+            } else {
+              note = tag;
+            }
+          }
+          return { stop, lineBadge, note };
+        });
+      }
+
+      if (!existingItem) {
+        if (!activeDay.items) activeDay.items = [];
+        activeDay.items.push(newItem);
+      }
+      activeDay.items = sortDayItems(activeDay.items);
+      touchTrip(trip);
+      saveTripsToStorage(state.trips, true);
+      modal.remove();
+      renderApp();
+    });
+  }
+
+  document.body.appendChild(modal);
+  renderModal();
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+}
+
+// 10. Candidate Idea Modal (Add / Edit pool idea)
+function openIdeaModal(trip, existingIdea) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'ideaModal';
+
+  let selectedIcon = existingIdea ? (existingIdea.icon || 'pin') : 'pin';
+  let applicableDays = existingIdea ? (existingIdea.applicableDays || []) : [];
+
+  modal.innerHTML = `
+    <div class="modal-dialog">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <h3 class="modal-heading">${existingIdea ? 'Edit Idea' : 'Add Idea to Pool'}</h3>
+        <button type="button" style="color: var(--text-muted); cursor: pointer;" id="cancelIdeaModalBtn">&#10005;</button>
+      </div>
+
+      <form id="ideaForm" style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label" for="ideaTitle">Idea / Candidate Title *</label>
+          <input class="text-input" id="ideaTitle" required placeholder="e.g. Visit Bowmore, Meet Marion" value="${escapeHtml(existingIdea?.title || '')}" autofocus />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Icon</label>
+          <div class="icon-picker-grid">
+            ${['pin', 'user', 'bed', 'cocktail', 'car', 'coffee', 'music', 'sparkles', 'calendar']
+              .map(
+                (ic) => `
+              <button type="button" class="icon-picker-btn ${selectedIcon === ic ? 'active' : ''}" data-idea-icon="${ic}" title="${ic}">
+                ${getSvgIcon(ic, 18, selectedIcon === ic ? 'var(--accent-blue)' : 'currentColor')}
+              </button>
+            `
+              )
+              .join('')}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Applicable Days</label>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto; padding: 4px 0;">
+            ${trip.days
+              .map((d) => {
+                const checked = applicableDays.length === 0 || applicableDays.includes(d.dayNumber);
+                return `
+              <label style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; background: var(--bg-canvas); border: 1px solid var(--border-card); font-family: var(--font-mono); font-size: 11px; cursor: pointer;">
+                <input type="checkbox" class="day-checkbox" value="${d.dayNumber}" ${checked ? 'checked' : ''} />
+                Day ${d.dayNumber}
+              </label>
+            `;
+              })
+              .join('')}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="ideaTags">Tags (comma separated)</label>
+          <input class="text-input" id="ideaTags" placeholder="e.g. Any day, 12:00–15:00, free 13:30–15:00" value="${
+            existingIdea?.tags ? existingIdea.tags.map((t) => t.text).join(', ') : ''
+          }" />
+        </div>
+
+        <div class="dialog-actions">
+          ${
+            existingIdea
+              ? `<button type="button" class="btn-secondary" id="modalDeleteIdeaBtn" style="color: var(--accent-alert); border-color: rgba(255, 107, 94, 0.4); margin-right: auto;">Delete</button>`
+              : ''
+          }
+          <button type="button" class="btn-secondary" id="cancelIdeaFormBtn">Cancel</button>
+          <button type="submit" class="btn-secondary" style="background: var(--accent-blue); color: #09090b; border: none; font-weight: 600;">Save Idea</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  modal.querySelector('#cancelIdeaModalBtn').addEventListener('click', () => modal.remove());
+  modal.querySelector('#cancelIdeaFormBtn').addEventListener('click', () => modal.remove());
+
+  modal.querySelectorAll('[data-idea-icon]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      selectedIcon = btn.getAttribute('data-idea-icon');
+      modal.querySelectorAll('[data-idea-icon]').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  modal.querySelector('#modalDeleteIdeaBtn')?.addEventListener('click', () => {
+    trip.pool = trip.pool.filter((i) => i.id !== existingIdea.id);
+    touchTrip(trip);
+    saveTripsToStorage(state.trips, true);
+    modal.remove();
+    renderApp();
+  });
+
+  modal.querySelector('#ideaForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = modal.querySelector('#ideaTitle').value.trim();
+    if (!title) return;
+
+    const checkedDays = Array.from(modal.querySelectorAll('.day-checkbox:checked')).map((cb) => Number(cb.value));
+    const allDaysSelected = checkedDays.length === trip.days.length;
+
+    const rawTags = modal.querySelector('#ideaTags').value.split(',').map((s) => s.trim()).filter(Boolean);
+    const tags = rawTags.map((txt) => {
+      let icon = 'calendar';
+      let variant = 'neutral';
+      if (/^\d{1,2}:\d{2}/.test(txt) || /clock/i.test(txt)) {
+        icon = 'clock';
+        variant = 'blue';
+      } else if (/free|ok|yes/i.test(txt)) {
+        icon = 'check';
+        variant = 'green';
+      } else if (/today|only|alert/i.test(txt)) {
+        variant = 'amber';
+      }
+      return { text: txt, icon, variant };
+    });
+
+    let item = existingIdea || { id: `pool-${Date.now()}` };
+    item.title = title;
+    item.icon = selectedIcon;
+    item.applicableDays = allDaysSelected ? [] : checkedDays;
+    item.tags = tags;
+
+    if (!existingIdea) {
+      if (!trip.pool) trip.pool = [];
+      trip.pool.push(item);
+    }
+
+    touchTrip(trip);
+    saveTripsToStorage(state.trips, true);
+    modal.remove();
+    renderApp();
+  });
 
   modal.addEventListener('click', (e) => {
     if (e.target === modal) modal.remove();
