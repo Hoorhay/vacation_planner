@@ -86,6 +86,40 @@ function getDurationFromDates(startDateStr, endDateStr) {
   return Math.max(1, diffDays + 1);
 }
 
+function getTripDateStatus(trip) {
+  if (!trip || !trip.startDate) {
+    return { status: 'none', daysUntil: 0, todayDayNumber: null, todayDate: null };
+  }
+  const todayIso = formatToIsoDate(new Date());
+  const todayDate = parseLocalDate(todayIso);
+  const startDate = parseLocalDate(trip.startDate);
+  const diffTime = todayDate.getTime() - startDate.getTime();
+  const dayDiff = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  if (dayDiff < 0) {
+    return {
+      status: 'future',
+      daysUntil: -dayDiff,
+      todayDayNumber: null,
+      todayDate
+    };
+  } else if (dayDiff < trip.totalDays) {
+    return {
+      status: 'current',
+      daysUntil: 0,
+      todayDayNumber: dayDiff + 1,
+      todayDate
+    };
+  } else {
+    return {
+      status: 'past',
+      daysUntil: null,
+      todayDayNumber: null,
+      todayDate
+    };
+  }
+}
+
 // SVG Icon Helper
 function getSvgIcon(name, size = 18, color = 'currentColor', strokeWidth = 1.75) {
   const common = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"`;
@@ -121,6 +155,16 @@ function getSvgIcon(name, size = 18, color = 'currentColor', strokeWidth = 1.75)
       return `<svg ${common}><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>`;
     case 'sparkles':
       return `<svg ${common}><path d="M12 3v4"/><path d="M12 17v4"/><path d="M3 12h4"/><path d="M17 12h4"/><path d="M5.6 5.6l2.8 2.8"/><path d="M15.6 15.6l2.8 2.8"/><path d="M18.4 5.6l-2.8 2.8"/><path d="M8.4 15.6l-2.8 2.8"/></svg>`;
+    case 'pencil':
+      return `<svg ${common}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`;
+    case 'share':
+      return `<svg ${common}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
+    case 'download':
+      return `<svg ${common}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+    case 'copy':
+      return `<svg ${common}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+    case 'image':
+      return `<svg ${common}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
     default:
       return '';
   }
@@ -360,7 +404,10 @@ function renderHomeView({ isReadOnly, dbUrl, dirty, formattedSync }) {
           </div>
           <div class="trip-card-footer">
             <span class="card-action-link">View Itinerary &rsaquo;</span>
-            <button type="button" class="card-delete-btn" data-delete-id="${trip.id}" title="Delete trip">Delete</button>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <button type="button" class="card-delete-btn" data-share-id="${trip.id}" title="Share itinerary">Share</button>
+              <button type="button" class="card-delete-btn" data-delete-id="${trip.id}" title="Delete trip">Delete</button>
+            </div>
           </div>
         </div>
       `;
@@ -369,15 +416,8 @@ function renderHomeView({ isReadOnly, dbUrl, dirty, formattedSync }) {
 
   root.innerHTML = `
     <div class="app-container">
-      <div class="top-bar">
-        <span class="brand-badge">Vacation Planner</span>
-        <div class="top-actions">
-          <button type="button" class="icon-btn" id="configBtn">Config</button>
-        </div>
-      </div>
-
-      <div class="home-view">
-        <h1 class="home-title">Your Vacations</h1>
+      <div class="home-view" style="margin-top: 4px;">
+        <h1 class="home-title">Vacation Planner</h1>
         <p class="home-subtitle">Plan, track, and navigate travel itineraries offline.</p>
 
         <button type="button" class="primary-btn" id="planTripBtn">
@@ -404,17 +444,30 @@ function renderHomeView({ isReadOnly, dbUrl, dirty, formattedSync }) {
 
 function attachHomeListeners() {
   document.getElementById('planTripBtn')?.addEventListener('click', openNewTripModal);
-  document.getElementById('configBtn')?.addEventListener('click', openConfigModal);
 
   document.querySelectorAll('.trip-card').forEach((card) => {
     card.addEventListener('click', (e) => {
-      if (e.target.closest('.card-delete-btn')) return;
+      if (e.target.closest('.card-delete-btn') || e.target.closest('[data-share-id]')) return;
       const tripId = card.getAttribute('data-trip-id');
       const trip = state.trips.find((t) => t.id === tripId);
       if (trip) {
         state.activeTripId = tripId;
-        state.activeDayNumber = trip.initialDayNumber || 1;
+        const status = getTripDateStatus(trip);
+        state.activeDayNumber = status.status === 'current' ? status.todayDayNumber : 1;
         renderApp();
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-share-id]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tripId = btn.getAttribute('data-share-id');
+      const trip = state.trips.find((t) => t.id === tripId);
+      if (trip) {
+        const status = getTripDateStatus(trip);
+        const dayNum = status.status === 'current' ? status.todayDayNumber : 1;
+        openShareModal(trip, dayNum);
       }
     });
   });
@@ -446,9 +499,11 @@ function renderTripView({ isReadOnly, dbUrl, dirty, formattedSync }) {
   const currentDate = getDateForDay(trip.startDate, activeDay.dayNumber);
   const formattedFullDate = formatFullDate(currentDate);
 
-  const initialDate = getDateForDay(trip.startDate, trip.initialDayNumber || 1);
-  const formattedInitialShortDate = formatShortDate(initialDate);
-  const isToday = state.activeDayNumber === (trip.initialDayNumber || 1);
+  const dateStatus = getTripDateStatus(trip);
+  const isCurrentTrip = dateStatus.status === 'current';
+  const isTodayActive = isCurrentTrip && state.activeDayNumber === dateStatus.todayDayNumber;
+  const showBackToToday = isCurrentTrip && !isTodayActive;
+  const isFutureTrip = dateStatus.status === 'future';
 
   // Progress Bar segments
   let segmentsHtml = '';
@@ -524,20 +579,40 @@ function renderTripView({ isReadOnly, dbUrl, dirty, formattedSync }) {
         </div>
 
         ${
-          !isToday
+          showBackToToday
             ? `<button type="button" class="back-to-today-btn" id="backToTodayBtn">
                 ${getSvgIcon('chevron-left', 15, 'var(--accent-blue)', 2.25)}
-                Back to today · ${formattedInitialShortDate}
+                Back to today · ${formatShortDate(dateStatus.todayDate)}
               </button>`
+            : isFutureTrip
+            ? `<div class="trip-countdown-banner">
+                ${getSvgIcon('clock', 14, 'var(--accent-blue)')}
+                <span>Trip starts in ${dateStatus.daysUntil} ${dateStatus.daysUntil === 1 ? 'day' : 'days'}</span>
+              </div>`
             : ''
         }
 
         <div class="route-row">
-          <span class="route-title">${escapeHtml(activeDay.routeTitle)}</span>
-          <button type="button" class="icon-btn" id="datesModalBtn">
-            ${getSvgIcon('calendar', 13, 'var(--text-muted)')}
-            Dates & Days
-          </button>
+          <div class="route-title-wrap" id="routeTitleWrap">
+            <span class="route-title" id="routeTitleText" title="${!isReadOnly ? 'Click to edit day title' : ''}">${escapeHtml(activeDay.routeTitle || `Day ${activeDay.dayNumber}`)}</span>
+            ${
+              !isReadOnly
+                ? `<button type="button" class="icon-btn edit-route-btn" id="editRouteTitleBtn" title="Edit day description" aria-label="Edit day description">
+                    ${getSvgIcon('pencil', 12, 'currentColor')}
+                  </button>`
+                : ''
+            }
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button type="button" class="icon-btn" id="shareItineraryBtn" title="Share itinerary">
+              ${getSvgIcon('share', 13, 'var(--text-muted)')}
+              Share
+            </button>
+            <button type="button" class="icon-btn" id="datesModalBtn">
+              ${getSvgIcon('calendar', 13, 'var(--text-muted)')}
+              Dates & Days
+            </button>
+          </div>
         </div>
       </header>
 
@@ -698,8 +773,59 @@ function attachTripListeners(trip) {
   });
 
   document.getElementById('backToTodayBtn')?.addEventListener('click', () => {
-    state.activeDayNumber = trip.initialDayNumber || 1;
-    renderApp();
+    const status = getTripDateStatus(trip);
+    if (status.status === 'current') {
+      state.activeDayNumber = status.todayDayNumber;
+      renderApp();
+    }
+  });
+
+  const routeWrap = document.getElementById('routeTitleWrap');
+  const editBtn = document.getElementById('editRouteTitleBtn');
+  const titleText = document.getElementById('routeTitleText');
+  const { isReadOnly } = getStoredCredentials();
+
+  function startEditingDayTitle() {
+    if (isReadOnly || !routeWrap) return;
+    const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
+    const currentVal = activeDay.routeTitle || `Day ${activeDay.dayNumber}`;
+    routeWrap.innerHTML = `
+      <form id="editRouteTitleForm" class="route-title-edit-form">
+        <input type="text" id="routeTitleInput" class="text-input" value="${escapeHtml(currentVal)}" placeholder="Day ${activeDay.dayNumber} description" />
+        <button type="submit" class="icon-btn" style="color: var(--accent-blue); padding: 4px 8px;" title="Save">${getSvgIcon('check', 14, 'var(--accent-blue)', 2.5)}</button>
+        <button type="button" id="cancelEditRouteBtn" class="icon-btn" style="padding: 4px 8px;" title="Cancel">&#10005;</button>
+      </form>
+    `;
+
+    const form = document.getElementById('editRouteTitleForm');
+    const input = document.getElementById('routeTitleInput');
+    input?.focus();
+    input?.select();
+
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = input.value.trim() || `Day ${activeDay.dayNumber}`;
+      activeDay.routeTitle = val;
+      saveTripsToStorage(state.trips, true);
+      renderApp();
+    });
+
+    document.getElementById('cancelEditRouteBtn')?.addEventListener('click', () => {
+      renderApp();
+    });
+
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        renderApp();
+      }
+    });
+  }
+
+  editBtn?.addEventListener('click', startEditingDayTitle);
+  titleText?.addEventListener('click', startEditingDayTitle);
+
+  document.getElementById('shareItineraryBtn')?.addEventListener('click', () => {
+    openShareModal(trip, state.activeDayNumber);
   });
 
   document.getElementById('datesModalBtn')?.addEventListener('click', () => openDatesModal(trip));
@@ -1072,13 +1198,16 @@ function openDatesModal(trip) {
     trip.days.forEach((day) => {
       const date = getDateForDay(trip.startDate, day.dayNumber);
       daysListHtml += `
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--bg-canvas); border: 1px solid var(--border-card); border-radius: 8px;">
-          <div>
-            <div style="font-size: 13px; font-weight: 600; color: var(--text-primary);">Day ${day.dayNumber}: ${escapeHtml(day.routeTitle)}</div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--bg-canvas); border: 1px solid var(--border-card); border-radius: 8px; gap: 8px;">
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Day ${day.dayNumber}: ${escapeHtml(day.routeTitle || `Day ${day.dayNumber}`)}</span>
+              ${!isReadOnly ? `<button type="button" class="icon-btn" data-rename-day="${day.dayNumber}" style="padding: 1px 6px; font-size: 10px;" title="Rename day">Edit</button>` : ''}
+            </div>
             <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${formatFullDate(date)}</div>
           </div>
           ${
-            trip.days.length > 1
+            !isReadOnly && trip.days.length > 1
               ? `<button type="button" class="card-delete-btn" data-remove-day="${day.dayNumber}">Delete</button>`
               : ''
           }
@@ -1193,6 +1322,22 @@ function openDatesModal(trip) {
       trip.totalDays = trip.days.length;
       saveTripsToStorage(state.trips, true);
       renderModalContent();
+    });
+
+    modal.querySelectorAll('[data-rename-day]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const dayNum = Number(btn.getAttribute('data-rename-day'));
+        const day = trip.days.find((d) => d.dayNumber === dayNum);
+        if (!day) return;
+        const currentTitle = day.routeTitle || `Day ${dayNum}`;
+        const newTitle = prompt(`Edit title / description for Day ${dayNum}:`, currentTitle);
+        if (newTitle !== null) {
+          day.routeTitle = newTitle.trim() || `Day ${dayNum}`;
+          saveTripsToStorage(state.trips, true);
+          renderModalContent();
+          renderApp();
+        }
+      });
     });
 
     modal.querySelectorAll('[data-remove-day]').forEach((btn) => {
@@ -1358,6 +1503,410 @@ function openConfigModal() {
   });
 
   modal.querySelector('#cancelConfigBtn').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+}
+
+// 8. Share Itinerary Modal (Image & Formatted Text Export)
+function drawRoundedRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.arcTo(x + width, y, x + width, y + radius, radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius);
+  ctx.lineTo(x + radius, y + height);
+  ctx.arcTo(x, y + height, x, y + height - radius, radius);
+  ctx.lineTo(x, y + radius);
+  ctx.arcTo(x, y, x + radius, y, radius);
+  ctx.closePath();
+}
+
+function getFormattedItineraryText(trip, dayNumber) {
+  if (dayNumber) {
+    const day = trip.days.find((d) => d.dayNumber === dayNumber) || trip.days[0];
+    if (!day) return '';
+    const date = getDateForDay(trip.startDate, day.dayNumber);
+    const dateStr = formatFullDate(date);
+    const title = day.routeTitle ? `Day ${day.dayNumber}: ${day.routeTitle}` : `Day ${day.dayNumber}`;
+
+    let lines = [
+      `🌴 ${trip.title}`,
+      `📅 ${title} · ${dateStr}`,
+      ''
+    ];
+
+    if (!day.items || day.items.length === 0) {
+      lines.push('  • (No scheduled events)');
+    } else {
+      day.items.forEach((item) => {
+        const timePart = item.time ? `${item.time} — ` : '';
+        lines.push(`• ${timePart}${item.title}`);
+      });
+    }
+    return lines.join('\n');
+  }
+
+  // Full Trip
+  let lines = [
+    `🌴 ${trip.title}`,
+    `🗓️ ${formatDateRange(trip.startDate, trip.totalDays)} (${trip.totalDays} days)`,
+    ''
+  ];
+
+  trip.days.forEach((day) => {
+    const date = getDateForDay(trip.startDate, day.dayNumber);
+    const dateStr = formatFullDate(date);
+    const title = day.routeTitle ? `Day ${day.dayNumber}: ${day.routeTitle}` : `Day ${day.dayNumber}`;
+    lines.push(`───────────────`);
+    lines.push(`📅 ${title} (${dateStr})`);
+    if (!day.items || day.items.length === 0) {
+      lines.push('  • (No scheduled events)');
+    } else {
+      day.items.forEach((item) => {
+        const timePart = item.time ? `${item.time} — ` : '';
+        lines.push(`  • ${timePart}${item.title}`);
+      });
+    }
+    lines.push('');
+  });
+
+  return lines.join('\n');
+}
+
+function renderItineraryCanvas(trip, dayNumber) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const width = 640;
+  const scale = 2;
+
+  const isSingleDay = Boolean(dayNumber);
+  const targetDays = isSingleDay
+    ? [trip.days.find((d) => d.dayNumber === dayNumber) || trip.days[0]].filter(Boolean)
+    : trip.days;
+
+  let estimatedHeight = 150;
+  targetDays.forEach((d) => {
+    if (!isSingleDay) estimatedHeight += 44;
+    const count = d.items && d.items.length > 0 ? d.items.length : 1;
+    estimatedHeight += count * 42 + 16;
+  });
+  estimatedHeight += 60;
+  const height = Math.max(isSingleDay ? 360 : 420, estimatedHeight);
+
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  ctx.scale(scale, scale);
+
+  // Outer background
+  ctx.fillStyle = '#09090b';
+  ctx.fillRect(0, 0, width, height);
+
+  // Card background
+  ctx.fillStyle = '#141519';
+  drawRoundedRect(ctx, 16, 16, width - 32, height - 32, 16);
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#27272a';
+  ctx.stroke();
+
+  // Badge
+  ctx.font = '600 11px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillText('VACATION PLANNER', 36, 48);
+
+  // Trip Title
+  ctx.font = '700 22px "IBM Plex Sans", -apple-system, sans-serif';
+  ctx.fillStyle = '#f4f4f5';
+  ctx.fillText(trip.title, 36, 78);
+
+  // Subtitle
+  ctx.font = '500 13px "IBM Plex Sans", -apple-system, sans-serif';
+  ctx.fillStyle = '#a1a1aa';
+  if (isSingleDay) {
+    const day = targetDays[0];
+    const date = getDateForDay(trip.startDate, day.dayNumber);
+    const dayTitle = day.routeTitle ? `Day ${day.dayNumber}: ${day.routeTitle}` : `Day ${day.dayNumber}`;
+    ctx.fillText(`${dayTitle}  ·  ${formatFullDate(date)}`, 36, 102);
+  } else {
+    ctx.fillText(`${formatDateRange(trip.startDate, trip.totalDays)} (${trip.totalDays} days)`, 36, 102);
+  }
+
+  // Header Divider
+  ctx.beginPath();
+  ctx.moveTo(36, 118);
+  ctx.lineTo(width - 36, 118);
+  ctx.strokeStyle = '#27272a';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  let curY = 145;
+
+  targetDays.forEach((day) => {
+    if (!isSingleDay) {
+      const date = getDateForDay(trip.startDate, day.dayNumber);
+      ctx.font = '700 14px "IBM Plex Sans", -apple-system, sans-serif';
+      ctx.fillStyle = '#38bdf8';
+      const dayTitle = day.routeTitle ? `Day ${day.dayNumber}: ${day.routeTitle}` : `Day ${day.dayNumber}`;
+      ctx.fillText(`${dayTitle} (${formatShortDate(date)})`, 36, curY);
+      curY += 26;
+    }
+
+    if (!day.items || day.items.length === 0) {
+      ctx.font = 'italic 13px "IBM Plex Sans", -apple-system, sans-serif';
+      ctx.fillStyle = '#71717a';
+      ctx.fillText('No scheduled activities', isSingleDay ? 40 : 50, curY);
+      curY += 36;
+    } else {
+      const items = day.items;
+      items.forEach((item, idx) => {
+        const dotX = isSingleDay ? 96 : 80;
+        const textX = dotX + 18;
+        const timeX = 36;
+
+        if (idx < items.length - 1) {
+          ctx.beginPath();
+          ctx.moveTo(dotX, curY);
+          ctx.lineTo(dotX, curY + 38);
+          ctx.strokeStyle = '#27272a';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        // Time
+        if (item.time) {
+          ctx.font = '600 12px "IBM Plex Mono", monospace';
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText(item.time, timeX, curY + 4);
+        } else {
+          ctx.font = '500 12px "IBM Plex Mono", monospace';
+          ctx.fillStyle = '#52525b';
+          ctx.fillText('—', timeX + 8, curY + 4);
+        }
+
+        // Dot
+        ctx.beginPath();
+        ctx.arc(dotX, curY, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fill();
+
+        // Title
+        ctx.font = '600 14px "IBM Plex Sans", -apple-system, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        const maxW = width - 36 - textX;
+        let t = item.title || '';
+        while (ctx.measureText(t).width > maxW && t.length > 3) {
+          t = t.slice(0, -4) + '...';
+        }
+        ctx.fillText(t, textX, curY + 4);
+
+        curY += 38;
+      });
+      curY += 12;
+    }
+  });
+
+  // Footer inside card
+  const footerY = height - 36;
+  ctx.beginPath();
+  ctx.moveTo(36, footerY - 14);
+  ctx.lineTo(width - 36, footerY - 14);
+  ctx.strokeStyle = '#27272a';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.font = '500 11px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#71717a';
+  ctx.fillText('Vacation Planner • Offline Itinerary', 36, footerY);
+
+  return canvas;
+}
+
+function openShareModal(trip, initialDayNumber) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'shareModal';
+
+  let selectedDay = initialDayNumber || 1;
+  let isFullTrip = false;
+
+  function renderShareContent() {
+    const textFormatted = getFormattedItineraryText(trip, isFullTrip ? null : selectedDay);
+    const dayObj = trip.days.find((d) => d.dayNumber === selectedDay) || trip.days[0];
+    const dayLabel = dayObj ? `Day ${dayObj.dayNumber}` : 'Day 1';
+
+    modal.innerHTML = `
+      <div class="modal-dialog">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <h3 class="modal-heading">Share Itinerary</h3>
+          <button type="button" style="color: var(--text-muted); cursor: pointer;" id="closeShareModalBtn">&#10005; Done</button>
+        </div>
+
+        <div class="share-scope-tabs">
+          <button type="button" class="share-tab-btn ${!isFullTrip ? 'active' : ''}" id="shareTabDayBtn">${escapeHtml(dayLabel)}</button>
+          <button type="button" class="share-tab-btn ${isFullTrip ? 'active' : ''}" id="shareTabFullBtn">Entire Trip (${trip.totalDays} Days)</button>
+        </div>
+
+        <!-- Section 1: Image Export -->
+        <div class="share-section">
+          <span class="share-section-title">
+            ${getSvgIcon('image', 14, 'var(--accent-blue)')}
+            Itinerary Image Card (PNG)
+          </span>
+          <div class="share-image-preview-wrap">
+            <img id="shareImagePreview" class="share-image-preview" alt="Itinerary Preview" />
+          </div>
+          <div class="share-actions-row">
+            <button type="button" class="primary-btn" id="shareImageNativeBtn">
+              ${getSvgIcon('share', 15, '#09090b', 2.25)}
+              Share Image
+            </button>
+            <button type="button" class="btn-secondary" id="downloadImageBtn">
+              ${getSvgIcon('download', 14, 'currentColor')}
+              Download PNG
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 2: Formatted Text -->
+        <div class="share-section">
+          <span class="share-section-title">
+            ${getSvgIcon('copy', 14, 'var(--accent-blue)')}
+            Formatted Text (WhatsApp, Signal, Mail)
+          </span>
+          <pre class="share-text-box" id="shareTextBox">${escapeHtml(textFormatted)}</pre>
+          <div class="share-actions-row">
+            <button type="button" class="primary-btn" id="copyTextBtn" style="background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-card);">
+              ${getSvgIcon('copy', 14, 'currentColor')}
+              Copy Text
+            </button>
+            ${
+              navigator.share
+                ? `<button type="button" class="btn-secondary" id="shareTextNativeBtn">
+                    ${getSvgIcon('share', 13, 'currentColor')}
+                    Share Text...
+                  </button>`
+                : ''
+            }
+          </div>
+        </div>
+      </div>
+    `;
+
+    attachShareListeners();
+    updateImagePreview();
+  }
+
+  function updateImagePreview() {
+    const canvas = renderItineraryCanvas(trip, isFullTrip ? null : selectedDay);
+    const dataUrl = canvas.toDataURL('image/png');
+    const imgEl = modal.querySelector('#shareImagePreview');
+    if (imgEl) imgEl.src = dataUrl;
+  }
+
+  function attachShareListeners() {
+    modal.querySelector('#closeShareModalBtn').addEventListener('click', () => modal.remove());
+
+    modal.querySelector('#shareTabDayBtn').addEventListener('click', () => {
+      if (isFullTrip) {
+        isFullTrip = false;
+        renderShareContent();
+      }
+    });
+
+    modal.querySelector('#shareTabFullBtn').addEventListener('click', () => {
+      if (!isFullTrip) {
+        isFullTrip = true;
+        renderShareContent();
+      }
+    });
+
+    const copyBtn = modal.querySelector('#copyTextBtn');
+    copyBtn?.addEventListener('click', async () => {
+      const text = getFormattedItineraryText(trip, isFullTrip ? null : selectedDay);
+      try {
+        await navigator.clipboard.writeText(text);
+        copyBtn.innerHTML = `${getSvgIcon('check', 14, '#38bdf8', 2.5)} Copied to Clipboard!`;
+        setTimeout(() => {
+          if (copyBtn) copyBtn.innerHTML = `${getSvgIcon('copy', 14, 'currentColor')} Copy Text`;
+        }, 2000);
+      } catch (err) {
+        const box = modal.querySelector('#shareTextBox');
+        if (box) {
+          const range = document.createRange();
+          range.selectNodeContents(box);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+      }
+    });
+
+    modal.querySelector('#shareTextNativeBtn')?.addEventListener('click', async () => {
+      const text = getFormattedItineraryText(trip, isFullTrip ? null : selectedDay);
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: trip.title,
+            text
+          });
+        } catch (err) {
+          if (err.name !== 'AbortError') console.warn(err);
+        }
+      }
+    });
+
+    const getCleanFileName = () => {
+      const slug = trip.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      return isFullTrip ? `${slug}-full-trip.png` : `${slug}-day-${selectedDay}.png`;
+    };
+
+    modal.querySelector('#downloadImageBtn')?.addEventListener('click', () => {
+      const canvas = renderItineraryCanvas(trip, isFullTrip ? null : selectedDay);
+      const dataUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = getCleanFileName();
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+
+    modal.querySelector('#shareImageNativeBtn')?.addEventListener('click', () => {
+      const canvas = renderItineraryCanvas(trip, isFullTrip ? null : selectedDay);
+      const fileName = getCleanFileName();
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], fileName, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              title: trip.title,
+              files: [file]
+            });
+            return;
+          } catch (err) {
+            if (err.name === 'AbortError') return;
+          }
+        }
+        // Fallback to download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }, 'image/png');
+    });
+  }
+
+  document.body.appendChild(modal);
+  renderShareContent();
+
   modal.addEventListener('click', (e) => {
     if (e.target === modal) modal.remove();
   });
