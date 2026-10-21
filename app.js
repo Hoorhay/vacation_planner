@@ -2592,7 +2592,7 @@ function openEventModal(trip, activeDay, existingItem) {
           <button type="button" style="color: var(--text-muted); cursor: pointer;" id="cancelEventModalBtn">&#10005;</button>
         </div>
 
-        <div class="event-type-tabs">
+        <div class="event-type-grid">
           <button type="button" class="event-type-btn ${currentType === 'venue' ? 'active' : ''}" data-type="venue">📍 Activity</button>
           <button type="button" class="event-type-btn ${currentType === 'alert' ? 'active' : ''}" data-type="alert">⏰ Alert</button>
           <button type="button" class="event-type-btn ${currentType === 'transport' ? 'active' : ''}" data-type="transport">🚀 Direct Transit</button>

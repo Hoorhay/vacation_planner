@@ -1500,7 +1500,17 @@ button:focus-visible {
   text-align: center;
 }
 
-/* Event Type Selector Tabs */
+/* Event Type Selector */
+.event-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--bg-canvas);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border-card);
+  gap: 6px;
+}
+
 .event-type-tabs {
   display: flex;
   background: var(--bg-canvas);
@@ -1508,12 +1518,13 @@ button:focus-visible {
   border-radius: 8px;
   border: 1px solid var(--border-card);
   gap: 4px;
-  overflow-x: auto;
 }
 
 .event-type-btn {
-  flex: 1;
-  padding: 7px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
   border-radius: 6px;
   border: none;
   background: transparent;
@@ -1524,6 +1535,10 @@ button:focus-visible {
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s ease;
+}
+
+.event-type-btn:hover {
+  color: var(--text-primary);
 }
 
 .event-type-btn.active {
