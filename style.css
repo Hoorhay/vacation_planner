@@ -542,13 +542,20 @@ button:focus-visible {
 .node-dot {
   position: absolute;
   left: 3px;
-  width: 14px;
-  height: 14px;
-  box-sizing: border-box;
-  border-radius: 50%;
-  border: 3px solid var(--bg-canvas);
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  max-width: 14px !important;
+  min-height: 14px !important;
+  max-height: 14px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  border-radius: 50% !important;
+  border: 3px solid var(--bg-canvas) !important;
   background-color: var(--text-muted);
   z-index: 2;
+  flex: none !important;
 }
 
 .node-dot.alert {
@@ -571,7 +578,8 @@ button:focus-visible {
   background-color: var(--text-secondary);
 }
 
-.node-dot.venue-card {
+.node-dot.venue-card,
+.node-dot.venue-card-dot {
   top: 17px;
   background-color: var(--text-muted);
 }

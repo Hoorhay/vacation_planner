@@ -266,7 +266,7 @@ function getSvgIcon(name, size = 18, color = 'currentColor', strokeWidth = 1.75)
     case 'plane':
       return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${color}" style="transform: rotate(90deg);" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>`;
     case 'car':
-      return `<svg ${common}><path d="M5 16V12l2-5h10l2 5v4"/><path d="M3 16h18v3H3z"/><circle cx="7.5" cy="13" r="0.8" fill="${color}"/><circle cx="16.5" cy="13" r="0.8" fill="${color}"/></svg>`;
+      return `<svg ${common}><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.5-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9L2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 12h14"/></svg>`;
     case 'ferry':
       return `<svg ${common}><path d="M3 16l2 4h14l2-4z"/><path d="M12 4v12"/><path d="M12 5l6 8h-6"/></svg>`;
     case 'pin':
@@ -275,6 +275,12 @@ function getSvgIcon(name, size = 18, color = 'currentColor', strokeWidth = 1.75)
       return `<svg ${common}><path d="M3 18V6"/><path d="M3 14h18v4"/><path d="M21 14v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11" r="1.75"/></svg>`;
     case 'cocktail':
       return `<svg ${common}><path d="M6 4h12l-1.4 14.2a1.5 1.5 0 0 1-1.5 1.3H8.9a1.5 1.5 0 0 1-1.5-1.3z"/><path d="M6.8 10.5h10.4"/></svg>`;
+    case 'pizza':
+      return `<svg ${common}><path d="M12 21L3.5 6.5A13.8 13.8 0 0 1 20.5 6.5L12 21z"/><path d="M5.5 8a11 11 0 0 1 13 0"/><circle cx="10" cy="12" r="1.5" fill="${color}"/><circle cx="14" cy="14" r="1.5" fill="${color}"/></svg>`;
+    case 'castle':
+      return `<svg ${common}><path d="M4 21V9l2-2v3h2V7l2-2v5h4V5l2 2v3h2V7l2 2v12H4z"/><path d="M10 21v-4a2 2 0 0 1 4 0v4"/></svg>`;
+    case 'trash':
+      return `<svg ${common}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
     case 'coffee':
       return `<svg ${common}><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`;
     case 'user':
@@ -1029,7 +1035,8 @@ function renderTimelineItem(item, isFirst, isLast) {
     contentHtml = `
       <div class="transport-card">
         <div class="transport-header" style="color: ${item.badgeColor || 'var(--accent-blue)'}">
-          ${escapeHtml(item.badgeLabel)}
+          <span>${escapeHtml(item.badgeLabel)}</span>
+          ${item.note ? `<span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); font-weight: normal; margin-left: 8px;">${escapeHtml(item.note)}</span>` : ''}
         </div>
         <div class="transport-route">
           <div class="location-block">
@@ -1058,7 +1065,7 @@ function renderTimelineItem(item, isFirst, isLast) {
   } else if (item.type === 'venue') {
     const isCard = Boolean(item.subtitle || item.timeWindow);
     timeClass = isCard ? 'card' : 'simple';
-    dotClass = isCard ? 'venue-card' : 'simple';
+    dotClass = isCard ? 'venue-card-dot' : 'simple';
 
     if (isCard) {
       contentHtml = `
@@ -1131,6 +1138,8 @@ function renderTimelineItem(item, isFirst, isLast) {
             !isReadOnly
               ? `
               <div class="timeline-item-actions">
+                <button type="button" class="icon-btn move-up-item-btn" data-move-up-id="${item.id}" title="Move up in schedule" style="padding: 2px 4px; font-size: 10px;">▲</button>
+                <button type="button" class="icon-btn move-down-item-btn" data-move-down-id="${item.id}" title="Move down in schedule" style="padding: 2px 4px; font-size: 10px;">▼</button>
                 <button type="button" class="icon-btn edit-item-btn" data-edit-item-id="${item.id}" title="Edit event" style="padding: 3px 6px;">
                   ${getSvgIcon('pencil', 12, 'currentColor')}
                 </button>
@@ -1151,6 +1160,40 @@ function attachTripListeners(trip) {
   document.getElementById('backToTripsBtn')?.addEventListener('click', () => {
     state.activeTripId = null;
     renderApp();
+  });
+
+  document.querySelectorAll('[data-move-up-id]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const itemId = btn.getAttribute('data-move-up-id');
+      const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
+      const idx = activeDay.items.findIndex((i) => i.id === itemId);
+      if (idx > 0) {
+        const temp = activeDay.items[idx];
+        activeDay.items[idx] = activeDay.items[idx - 1];
+        activeDay.items[idx - 1] = temp;
+        touchTrip(trip);
+        saveTripsToStorage(state.trips, true);
+        renderApp();
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-move-down-id]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const itemId = btn.getAttribute('data-move-down-id');
+      const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
+      const idx = activeDay.items.findIndex((i) => i.id === itemId);
+      if (idx >= 0 && idx < activeDay.items.length - 1) {
+        const temp = activeDay.items[idx];
+        activeDay.items[idx] = activeDay.items[idx + 1];
+        activeDay.items[idx + 1] = temp;
+        touchTrip(trip);
+        saveTripsToStorage(state.trips, true);
+        renderApp();
+      }
+    });
   });
 
   document.getElementById('prevDayBtn')?.addEventListener('click', () => {
@@ -1661,12 +1704,14 @@ function openDeleteModal(trip) {
   });
 }
 
-// 6. Dates & Days Modal (Shift Start Date, Add/Remove Days)
+// 6. Dates & Days Modal (Shift Start Date, Adjust Duration, Add/Remove Days)
 function openDatesModal(trip) {
+  const { isReadOnly } = getStoredCredentials();
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
 
   let shiftStartDate = trip.startDate;
+  let targetTotalDays = trip.totalDays;
 
   function renderModalContent() {
     let daysListHtml = '';
@@ -1699,14 +1744,26 @@ function openDatesModal(trip) {
 
         <div style="padding-bottom: 12px; border-bottom: 1px solid var(--border-card); display: flex; flex-direction: column; gap: 8px;">
           <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted);">
-            Shift Start Date (DD.MM.YYYY)
+            Trip Dates & Duration
           </span>
-          <div class="date-input-group">
-            <input type="text" class="text-input" id="shiftDateText" value="${isoToDDMMYYYY(shiftStartDate)}" placeholder="DD.MM.YYYY" maxLength="10" />
-            <button type="button" class="calendar-trigger-btn" id="shiftCalBtn">${getSvgIcon('calendar', 16, 'currentColor')}</button>
-            <input type="date" class="hidden-date-native" id="shiftNativePicker" value="${shiftStartDate}" />
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label" for="shiftDateText">Start Date</label>
+              <div class="date-input-group">
+                <input type="text" class="text-input" id="shiftDateText" value="${isoToDDMMYYYY(shiftStartDate)}" placeholder="DD.MM.YYYY" maxLength="10" />
+                <button type="button" class="calendar-trigger-btn" id="shiftCalBtn">${getSvgIcon('calendar', 16, 'currentColor')}</button>
+                <input type="date" class="hidden-date-native" id="shiftNativePicker" value="${shiftStartDate}" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="tripDaysCountInput">Total Days</label>
+              <input type="number" class="text-input" id="tripDaysCountInput" min="1" max="90" value="${targetTotalDays}" />
+            </div>
           </div>
-          <button type="button" class="btn-secondary" id="applyShiftBtn" style="background: var(--accent-blue); color: #09090b; border: none; align-self: flex-start;">Apply Shift</button>
+          <div id="datesPreviewCalculated" style="font-family: var(--font-mono); font-size: 11.5px; color: var(--accent-blue);">
+            ${formatDateRange(shiftStartDate, targetTotalDays)} (${targetTotalDays} days total)
+          </div>
+          ${!isReadOnly ? `<button type="button" class="btn-secondary" id="applyShiftBtn" style="background: var(--accent-blue); color: #09090b; border: none; align-self: flex-start; font-weight: 600;">Save Dates & Duration</button>` : ''}
         </div>
 
         <div style="padding-bottom: 12px; border-bottom: 1px solid var(--border-card); display: flex; flex-direction: column; gap: 8px;">
@@ -1741,8 +1798,16 @@ function openDatesModal(trip) {
 
     const shiftText = modal.querySelector('#shiftDateText');
     const shiftPicker = modal.querySelector('#shiftNativePicker');
+    const daysInput = modal.querySelector('#tripDaysCountInput');
+    const previewEl = modal.querySelector('#datesPreviewCalculated');
 
-    shiftText.addEventListener('input', (e) => {
+    const updatePreview = () => {
+      if (previewEl && shiftStartDate && targetTotalDays) {
+        previewEl.textContent = `${formatDateRange(shiftStartDate, targetTotalDays)} (${targetTotalDays} days total)`;
+      }
+    };
+
+    shiftText?.addEventListener('input', (e) => {
       let raw = e.target.value.replace(/[/\\-]/g, '.');
       const digits = raw.replace(/\D/g, '');
       if (digits.length === 8 && !raw.includes('.')) {
@@ -1753,15 +1818,16 @@ function openDatesModal(trip) {
       if (iso) {
         shiftStartDate = iso;
         shiftPicker.value = iso;
+        updatePreview();
       }
     });
 
-    shiftText.addEventListener('blur', (e) => {
+    shiftText?.addEventListener('blur', (e) => {
       const iso = ddmmyyyyToIso(e.target.value);
       if (iso) e.target.value = isoToDDMMYYYY(iso);
     });
 
-    modal.querySelector('#shiftCalBtn').addEventListener('click', () => {
+    shiftCalBtn?.addEventListener('click', () => {
       try {
         shiftPicker.showPicker ? shiftPicker.showPicker() : shiftPicker.click();
       } catch {
@@ -1769,23 +1835,58 @@ function openDatesModal(trip) {
       }
     });
 
-    shiftPicker.addEventListener('change', (e) => {
+    shiftPicker?.addEventListener('change', (e) => {
       if (e.target.value) {
         shiftStartDate = e.target.value;
         shiftText.value = isoToDDMMYYYY(shiftStartDate);
+        updatePreview();
       }
     });
 
-    modal.querySelector('#applyShiftBtn').addEventListener('click', () => {
-      if (shiftStartDate && shiftStartDate !== trip.startDate) {
-        trip.startDate = shiftStartDate;
-        touchTrip(trip);
-        saveTripsToStorage(state.trips, true);
-        renderModalContent();
+    daysInput?.addEventListener('input', (e) => {
+      const count = parseInt(e.target.value, 10);
+      if (count && count >= 1 && count <= 90) {
+        targetTotalDays = count;
+        updatePreview();
       }
     });
 
-    modal.querySelector('#addNewDayBtn').addEventListener('click', () => {
+    modal.querySelector('#applyShiftBtn')?.addEventListener('click', () => {
+      trip.startDate = shiftStartDate;
+
+      // Adjust total days count
+      if (targetTotalDays > trip.days.length) {
+        while (trip.days.length < targetTotalDays) {
+          const nextNum = trip.days.length + 1;
+          trip.days.push({
+            id: `day-${nextNum}-${Date.now()}`,
+            dayNumber: nextNum,
+            routeTitle: `Day ${nextNum}`,
+            items: []
+          });
+        }
+      } else if (targetTotalDays < trip.days.length) {
+        const removedDays = trip.days.slice(targetTotalDays);
+        const hasEvents = removedDays.some((d) => d.items && d.items.length > 0);
+        if (hasEvents) {
+          if (!confirm(`Shortening to ${targetTotalDays} days will remove scheduled events on later days. Proceed?`)) {
+            return;
+          }
+        }
+        trip.days = trip.days.slice(0, targetTotalDays);
+      }
+
+      trip.totalDays = trip.days.length;
+      if (state.activeDayNumber > trip.totalDays) {
+        state.activeDayNumber = trip.totalDays;
+      }
+
+      touchTrip(trip);
+      saveTripsToStorage(state.trips, true);
+      renderModalContent();
+    });
+
+    modal.querySelector('#addNewDayBtn')?.addEventListener('click', () => {
       const titleInput = modal.querySelector('#newDayTitleInput');
       const title = titleInput.value.trim() || `Day ${trip.days.length + 1}`;
       const nextNum = trip.days.length + 1;
@@ -1796,6 +1897,7 @@ function openDatesModal(trip) {
         items: []
       });
       trip.totalDays = trip.days.length;
+      targetTotalDays = trip.totalDays;
       touchTrip(trip);
       saveTripsToStorage(state.trips, true);
       renderModalContent();
@@ -1829,6 +1931,7 @@ function openDatesModal(trip) {
         }
         trip.days = trip.days.filter((d) => d.dayNumber !== dayNum).map((d, idx) => ({ ...d, dayNumber: idx + 1 }));
         trip.totalDays = trip.days.length;
+        targetTotalDays = trip.totalDays;
         if (state.activeDayNumber > trip.totalDays) {
           state.activeDayNumber = trip.totalDays;
         }
@@ -2385,7 +2488,75 @@ function openShareModal(trip, initialDayNumber) {
   });
 }
 
-// 9. Day Event Planning Modal (Activity, Alert, Transport, Transit Chain)
+// Helper to calculate available/free gap on a day within a time range
+function calculateFreeTimeWindow(activeDay, rangeStr) {
+  if (!rangeStr || !activeDay) return null;
+  const match = rangeStr.match(/(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})/);
+  if (!match) return null;
+
+  const toMin = (t) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const toTimeStr = (min) => {
+    const h = String(Math.floor(min / 60)).padStart(2, '0');
+    const m = String(min % 60).padStart(2, '0');
+    return `${h}:${m}`;
+  };
+
+  const rangeStart = toMin(match[1]);
+  const rangeEnd = toMin(match[2]);
+  if (rangeEnd <= rangeStart) return null;
+
+  const busy = [];
+  (activeDay.items || []).forEach((item) => {
+    if (item.timeWindow) {
+      const tw = item.timeWindow.match(/(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})/);
+      if (tw) busy.push([toMin(tw[1]), toMin(tw[2])]);
+    } else if (item.from?.time && item.to?.time) {
+      busy.push([toMin(item.from.time), toMin(item.to.time)]);
+    } else if (item.time) {
+      const t = toMin(item.time);
+      busy.push([t, t + 60]);
+    }
+  });
+
+  const overlaps = busy.filter(([s, e]) => s < rangeEnd && e > rangeStart);
+  if (overlaps.length === 0) {
+    return `${match[1]}–${match[2]}`;
+  }
+
+  overlaps.sort((a, b) => a[0] - b[0]);
+  let current = rangeStart;
+  let maxGap = 0;
+  let bestGap = null;
+
+  overlaps.forEach(([bs, be]) => {
+    if (bs > current) {
+      const gap = bs - current;
+      if (gap > maxGap) {
+        maxGap = gap;
+        bestGap = [current, bs];
+      }
+    }
+    if (be > current) current = be;
+  });
+
+  if (rangeEnd > current) {
+    const gap = rangeEnd - current;
+    if (gap > maxGap) {
+      maxGap = gap;
+      bestGap = [current, rangeEnd];
+    }
+  }
+
+  if (bestGap && maxGap >= 25) {
+    return `${toTimeStr(bestGap[0])}–${toTimeStr(bestGap[1])}`;
+  }
+  return null;
+}
+
+// 9. Day Event Planning Modal (Activity, Alert, Direct Transit, Multi-leg Transit)
 function openEventModal(trip, activeDay, existingItem) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
@@ -2394,6 +2565,24 @@ function openEventModal(trip, activeDay, existingItem) {
   let currentType = existingItem ? existingItem.type : 'venue';
   let selectedIcon = existingItem ? (existingItem.icon || 'pin') : 'pin';
   let transportMode = existingItem && existingItem.type === 'transport' ? (existingItem.mode || 'flight') : 'flight';
+
+  // Multi-leg transit step builder state
+  let transitSteps = existingItem?.steps
+    ? JSON.parse(JSON.stringify(existingItem.steps))
+    : [
+        { stop: '', lineBadge: { type: 'metro', label: 'B', bgColor: '#F5B731', textColor: '#1B1300' }, note: '' },
+        { stop: '', lineBadge: { type: 'bus', label: '#100', borderColor: '#6CB8FF', textColor: '#6CB8FF' }, note: '' },
+        { stop: '', note: '' }
+      ];
+
+  const COLOR_PRESETS = [
+    { label: 'Gold', hex: '#F5B731', text: '#1B1300' },
+    { label: 'Blue', hex: '#6CB8FF', text: '#6CB8FF' },
+    { label: 'Green', hex: '#4CC77D', text: '#4CC77D' },
+    { label: 'Red', hex: '#FF6B5E', text: '#FF6B5E' },
+    { label: 'Purple', hex: '#A855F7', text: '#A855F7' },
+    { label: 'Gray', hex: '#D4D4D8', text: '#D4D4D8' }
+  ];
 
   function renderModal() {
     modal.innerHTML = `
@@ -2406,43 +2595,55 @@ function openEventModal(trip, activeDay, existingItem) {
         <div class="event-type-tabs">
           <button type="button" class="event-type-btn ${currentType === 'venue' ? 'active' : ''}" data-type="venue">📍 Activity</button>
           <button type="button" class="event-type-btn ${currentType === 'alert' ? 'active' : ''}" data-type="alert">⏰ Alert</button>
-          <button type="button" class="event-type-btn ${currentType === 'transport' ? 'active' : ''}" data-type="transport">✈️ Travel Leg</button>
-          <button type="button" class="event-type-btn ${currentType === 'transit_chain' ? 'active' : ''}" data-type="transit_chain">🚇 Transit</button>
+          <button type="button" class="event-type-btn ${currentType === 'transport' ? 'active' : ''}" data-type="transport">🚀 Direct Transit</button>
+          <button type="button" class="event-type-btn ${currentType === 'transit_chain' ? 'active' : ''}" data-type="transit_chain">🚇 Multi-leg Transit</button>
         </div>
 
         <form id="eventForm" style="display: flex; flex-direction: column; gap: 14px;">
-          <!-- Time Field -->
-          <div class="form-group">
-            <label class="form-label" for="eventTime">Scheduled Time (optional)</label>
-            <input class="text-input" id="eventTime" placeholder="e.g. 09:30 or 15:00" value="${escapeHtml(existingItem ? (existingItem.time || '') : '')}" />
-          </div>
-
           ${
             currentType === 'venue'
               ? `
+            <!-- 1. Title on top -->
             <div class="form-group">
               <label class="form-label" for="venueTitle">Title / Venue *</label>
               <input class="text-input" id="venueTitle" required placeholder="e.g. Kilchoman, Islay Hotel, Super Bar" value="${escapeHtml(existingItem?.title || '')}" autofocus />
             </div>
 
+            <!-- 2. Time below title -->
             <div class="form-group">
-              <label class="form-label" for="venueSubtitle">Subtitle / Note (optional)</label>
+              <label class="form-label" for="eventTime">Time (optional)</label>
+              <input class="text-input" id="eventTime" placeholder="e.g. 09:30 or 11:15" value="${escapeHtml(existingItem ? (existingItem.time || '') : '')}" />
+            </div>
+
+            <!-- 3. Note / Subtitle -->
+            <div class="form-group">
+              <label class="form-label" for="venueSubtitle">Note / Subtitle (optional)</label>
               <input class="text-input" id="venueSubtitle" placeholder="e.g. visit and brunch, SIXT reservation 12345" value="${escapeHtml(existingItem?.subtitle || '')}" />
             </div>
 
+            <!-- 4. Time Window / Duration -->
             <div class="form-group">
-              <label class="form-label" for="venueTimeWindow">Time Window / Duration</label>
+              <label class="form-label" for="venueTimeWindow">Time Window / Duration (optional)</label>
               <input class="text-input" id="venueTimeWindow" placeholder="e.g. 11:15–13:30 or 2 hours" value="${escapeHtml(existingItem?.timeWindow || '')}" />
             </div>
 
+            <!-- 5. Icon Picker -->
             <div class="form-group">
-              <label class="form-label">Icon</label>
+              <label class="form-label">Activity Icon</label>
               <div class="icon-picker-grid">
-                ${['pin', 'bed', 'cocktail', 'car', 'coffee', 'user', 'music', 'sparkles', 'calendar']
+                ${[
+                  { id: 'pin', name: 'Location' },
+                  { id: 'bed', name: 'Hotel/Lodging' },
+                  { id: 'pizza', name: 'Food/Dining' },
+                  { id: 'cocktail', name: 'Bar/Drinks' },
+                  { id: 'castle', name: 'Sights/Castles' },
+                  { id: 'user', name: 'Meeting' },
+                  { id: 'music', name: 'Music/Pub' }
+                ]
                   .map(
                     (ic) => `
-                  <button type="button" class="icon-picker-btn ${selectedIcon === ic ? 'active' : ''}" data-icon="${ic}" title="${ic}">
-                    ${getSvgIcon(ic, 18, selectedIcon === ic ? 'var(--accent-blue)' : 'currentColor')}
+                  <button type="button" class="icon-picker-btn ${selectedIcon === ic.id ? 'active' : ''}" data-icon="${ic.id}" title="${ic.name}">
+                    ${getSvgIcon(ic.id, 18, selectedIcon === ic.id ? 'var(--accent-blue)' : 'currentColor')}
                   </button>
                 `
                   )
@@ -2453,12 +2654,23 @@ function openEventModal(trip, activeDay, existingItem) {
               : currentType === 'alert'
               ? `
             <div class="form-group">
-              <label class="form-label" for="alertLabel">Alert / Deadline Message *</label>
-              <input class="text-input" id="alertLabel" required placeholder="e.g. departure from hotel, gate closes, ferry check-in" value="${escapeHtml(existingItem?.label || '')}" autofocus />
+              <label class="form-label" for="eventTime">Time * (Mandatory)</label>
+              <input class="text-input" id="eventTime" required placeholder="e.g. 05:00 or 15:30" value="${escapeHtml(existingItem ? (existingItem.time || '') : '')}" autofocus />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="alertLabel">Alert / Deadline Message * (Mandatory)</label>
+              <input class="text-input" id="alertLabel" required placeholder="e.g. departure from hotel, gate closes, ferry check-in" value="${escapeHtml(existingItem?.label || '')}" />
             </div>
           `
               : currentType === 'transport'
               ? `
+            <!-- Scheduled Time -->
+            <div class="form-group">
+              <label class="form-label" for="eventTime">Departure Time (optional)</label>
+              <input class="text-input" id="eventTime" placeholder="e.g. 08:00 or 16:00" value="${escapeHtml(existingItem ? (existingItem.time || '') : '')}" />
+            </div>
+
             <div class="form-group">
               <label class="form-label">Mode</label>
               <div class="event-type-tabs">
@@ -2468,9 +2680,15 @@ function openEventModal(trip, activeDay, existingItem) {
               </div>
             </div>
 
-            <div class="form-group">
-              <label class="form-label" for="transportBadge">Header Badge *</label>
-              <input class="text-input" id="transportBadge" required placeholder="e.g. Flight · FR1014, Drive · estimated 2 hours, Ferry" value="${escapeHtml(existingItem?.badgeLabel || (transportMode === 'flight' ? 'Flight' : transportMode === 'ferry' ? 'Ferry' : 'Drive'))}" />
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="form-group">
+                <label class="form-label" for="transportBadge">Header Badge / Pill *</label>
+                <input class="text-input" id="transportBadge" required placeholder="e.g. Flight · FR1014, Drive" value="${escapeHtml(existingItem?.badgeLabel || (transportMode === 'flight' ? 'Flight' : transportMode === 'ferry' ? 'Ferry' : 'Drive'))}" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="transportNote">Note (optional)</label>
+                <input class="text-input" id="transportNote" placeholder="e.g. estimated 2 hours, terminal 2" value="${escapeHtml(existingItem?.note || '')}" />
+              </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -2496,14 +2714,74 @@ function openEventModal(trip, activeDay, existingItem) {
             </div>
           `
               : `
+            <!-- Multi-leg Transit -->
             <div class="form-group">
-              <label class="form-label" for="transitStepsRaw">Transit Stops (One per line)</label>
-              <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 6px;">Format: <code>Stop Name (Line or Note)</code></p>
-              <textarea class="text-input" id="transitStepsRaw" rows="4" style="height: auto; resize: vertical;" placeholder="Křižíkova (Metro B)&#10;Zličín (Bus 100)&#10;PRG T2 (arrival ~6:15)">${
-                existingItem?.steps
-                  ? existingItem.steps.map((s) => `${s.stop}${s.lineBadge?.label ? ` (${s.lineBadge.label})` : s.note ? ` (${s.note})` : ''}`).join('\n')
-                  : ''
-              }</textarea>
+              <label class="form-label" for="eventTime">Departure Time (optional)</label>
+              <input class="text-input" id="eventTime" placeholder="e.g. 05:15" value="${escapeHtml(existingItem ? (existingItem.time || '') : '')}" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Transit Stops & Transfers</label>
+              <div style="display: flex; flex-direction: column; gap: 10px; max-height: 280px; overflow-y: auto;">
+                ${transitSteps
+                  .map((step, idx) => {
+                    const isLast = idx === transitSteps.length - 1;
+                    const badge = step.lineBadge || {};
+                    return `
+                    <div style="padding: 10px; background: var(--bg-canvas); border: 1px solid var(--border-card); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+                      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                        <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--accent-blue);">Stop ${idx + 1}</span>
+                        ${
+                          transitSteps.length > 2
+                            ? `<button type="button" class="card-delete-btn" data-del-step="${idx}">Delete Stop</button>`
+                            : ''
+                        }
+                      </div>
+
+                      <div class="form-group">
+                        <label class="form-label" style="font-size: 11px;">Station / Stop Name *</label>
+                        <input type="text" class="text-input step-stop-input" data-step-idx="${idx}" placeholder="e.g. Křižíkova, Zličín, PRG T2" value="${escapeHtml(step.stop)}" required />
+                      </div>
+
+                      ${
+                        !isLast
+                          ? `
+                        <div style="display: grid; grid-template-columns: 100px 1fr 1fr; gap: 8px;">
+                          <div>
+                            <label class="form-label" style="font-size: 10px;">Line Type</label>
+                            <select class="text-input step-line-type" data-step-idx="${idx}" style="padding: 4px 6px; font-size: 12px; height: 32px;">
+                              <option value="metro" ${badge.type === 'metro' ? 'selected' : ''}>Metro</option>
+                              <option value="bus" ${badge.type === 'bus' ? 'selected' : ''}>Bus</option>
+                              <option value="tram" ${badge.type === 'tram' ? 'selected' : ''}>Tram</option>
+                              <option value="train" ${badge.type === 'train' ? 'selected' : ''}>Train</option>
+                              <option value="walk" ${!badge.type || badge.type === 'walk' ? 'selected' : ''}>Walk / Transfer</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label class="form-label" style="font-size: 10px;">Line Label</label>
+                            <input type="text" class="text-input step-line-label" data-step-idx="${idx}" placeholder="e.g. B, #100" value="${escapeHtml(badge.label || '')}" style="height: 32px; padding: 4px 6px; font-size: 12px;" />
+                          </div>
+                          <div>
+                            <label class="form-label" style="font-size: 10px;">Color</label>
+                            <select class="text-input step-line-color" data-step-idx="${idx}" style="padding: 4px 6px; font-size: 12px; height: 32px;">
+                              ${COLOR_PRESETS.map((c) => `<option value="${c.hex}" ${badge.bgColor === c.hex || badge.borderColor === c.hex ? 'selected' : ''}>${c.label}</option>`).join('')}
+                            </select>
+                          </div>
+                        </div>
+                      `
+                          : `
+                        <div class="form-group">
+                          <label class="form-label" style="font-size: 10px;">Arrival / Destination Note</label>
+                          <input type="text" class="text-input step-note-input" data-step-idx="${idx}" placeholder="e.g. arrival ~6:15" value="${escapeHtml(step.note || '')}" style="height: 32px; padding: 4px 8px; font-size: 12px;" />
+                        </div>
+                      `
+                      }
+                    </div>
+                  `;
+                  })
+                  .join('')}
+              </div>
+              <button type="button" class="btn-secondary" id="addTransitLegBtn" style="align-self: flex-start; margin-top: 4px; font-size: 11px;">+ Add Next Stop</button>
             </div>
           `
           }
@@ -2550,6 +2828,20 @@ function openEventModal(trip, activeDay, existingItem) {
       });
     });
 
+    // Multi-leg transit step interactions
+    modal.querySelector('#addTransitLegBtn')?.addEventListener('click', () => {
+      transitSteps.push({ stop: '', note: '' });
+      renderModal();
+    });
+
+    modal.querySelectorAll('[data-del-step]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.getAttribute('data-del-step'));
+        transitSteps.splice(idx, 1);
+        renderModal();
+      });
+    });
+
     modal.querySelector('#modalDeleteEventBtn')?.addEventListener('click', () => {
       activeDay.items = activeDay.items.filter((i) => i.id !== existingItem.id);
       touchTrip(trip);
@@ -2574,12 +2866,20 @@ function openEventModal(trip, activeDay, existingItem) {
         newItem.timeWindow = tw || undefined;
         newItem.icon = selectedIcon;
       } else if (currentType === 'alert') {
+        const alertLabel = modal.querySelector('#alertLabel').value.trim();
+        if (!timeVal || !alertLabel) {
+          alert('Both time and alert message are required for alerts.');
+          return;
+        }
         newItem.type = 'alert';
-        newItem.label = modal.querySelector('#alertLabel').value.trim();
+        newItem.time = timeVal;
+        newItem.label = alertLabel;
       } else if (currentType === 'transport') {
         newItem.type = 'transport';
         newItem.mode = transportMode;
         newItem.badgeLabel = modal.querySelector('#transportBadge').value.trim();
+        const noteVal = modal.querySelector('#transportNote').value.trim();
+        newItem.note = noteVal || undefined;
         newItem.badgeColor = transportMode === 'flight' ? '#6cb8ff' : transportMode === 'ferry' ? '#5ed3c4' : '#d4d4d8';
         newItem.from = {
           label: modal.querySelector('#fromLabel').value.trim(),
@@ -2591,26 +2891,43 @@ function openEventModal(trip, activeDay, existingItem) {
         };
       } else if (currentType === 'transit_chain') {
         newItem.type = 'transit_chain';
-        const rawLines = modal.querySelector('#transitStepsRaw').value.split('\n').filter(Boolean);
-        newItem.steps = rawLines.map((line) => {
-          const m = line.match(/^([^(]+)(?:\(([^)]+)\))?/);
-          const stop = m ? m[1].trim() : line.trim();
-          const tag = m && m[2] ? m[2].trim() : null;
-          let lineBadge = undefined;
-          let note = undefined;
-          if (tag) {
-            if (/metro\s*([a-z0-9]+)/i.test(tag) || /^[a-c]$/i.test(tag)) {
-              const letter = tag.replace(/metro/i, '').trim() || 'A';
-              lineBadge = { type: 'metro', label: letter.toUpperCase(), sublabel: 'M', bgColor: '#F5B731', textColor: '#1B1300' };
-            } else if (/bus\s*#?([0-9]+)/i.test(tag) || /^[0-9]+$/.test(tag)) {
-              const num = tag.replace(/bus/i, '').replace('#', '').trim();
-              lineBadge = { type: 'bus', label: `#${num}`, borderColor: '#6CB8FF', textColor: '#6CB8FF' };
-            } else {
-              note = tag;
+
+        // Gather from form inputs
+        modal.querySelectorAll('.step-stop-input').forEach((inp) => {
+          const idx = Number(inp.getAttribute('data-step-idx'));
+          if (transitSteps[idx]) transitSteps[idx].stop = inp.value.trim();
+        });
+
+        modal.querySelectorAll('.step-line-type').forEach((sel) => {
+          const idx = Number(sel.getAttribute('data-step-idx'));
+          const lineType = sel.value;
+          const labelInp = modal.querySelector(`.step-line-label[data-step-idx="${idx}"]`);
+          const colorSel = modal.querySelector(`.step-line-color[data-step-idx="${idx}"]`);
+          const colorHex = colorSel ? colorSel.value : '#F5B731';
+
+          if (lineType === 'walk' || !labelInp || !labelInp.value.trim()) {
+            if (transitSteps[idx]) delete transitSteps[idx].lineBadge;
+          } else {
+            const labelText = labelInp.value.trim();
+            if (transitSteps[idx]) {
+              transitSteps[idx].lineBadge = {
+                type: lineType,
+                label: labelText,
+                sublabel: lineType === 'metro' ? 'M' : undefined,
+                bgColor: colorHex,
+                textColor: colorHex === '#F5B731' ? '#1B1300' : '#FFFFFF',
+                borderColor: colorHex
+              };
             }
           }
-          return { stop, lineBadge, note };
         });
+
+        modal.querySelectorAll('.step-note-input').forEach((inp) => {
+          const idx = Number(inp.getAttribute('data-step-idx'));
+          if (transitSteps[idx]) transitSteps[idx].note = inp.value.trim() || undefined;
+        });
+
+        newItem.steps = transitSteps.filter((s) => s.stop);
       }
 
       if (!existingItem) {
@@ -2633,7 +2950,7 @@ function openEventModal(trip, activeDay, existingItem) {
   });
 }
 
-// 10. Candidate Idea Modal (Add / Edit pool idea)
+// 10. Candidate Idea Modal (Add / Edit pool idea with smart tag generation)
 function openIdeaModal(trip, existingIdea) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
@@ -2641,6 +2958,8 @@ function openIdeaModal(trip, existingIdea) {
 
   let selectedIcon = existingIdea ? (existingIdea.icon || 'pin') : 'pin';
   let applicableDays = existingIdea ? (existingIdea.applicableDays || []) : [];
+
+  const timeRangeExisting = existingIdea?.tags?.find((t) => /^\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}/.test(t.text))?.text || '';
 
   modal.innerHTML = `
     <div class="modal-dialog">
@@ -2656,13 +2975,29 @@ function openIdeaModal(trip, existingIdea) {
         </div>
 
         <div class="form-group">
+          <label class="form-label" for="ideaTimeRange">Time Window / Range (optional)</label>
+          <input class="text-input" id="ideaTimeRange" placeholder="e.g. 12:00–15:00 or 14:00–17:00" value="${escapeHtml(timeRangeExisting)}" />
+          <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+            A green "free XX:XX–YY:YY" pill will be automatically calculated against the day's schedule!
+          </span>
+        </div>
+
+        <div class="form-group">
           <label class="form-label">Icon</label>
           <div class="icon-picker-grid">
-            ${['pin', 'user', 'bed', 'cocktail', 'car', 'coffee', 'music', 'sparkles', 'calendar']
+            ${[
+              { id: 'pin', name: 'Location' },
+              { id: 'bed', name: 'Hotel' },
+              { id: 'pizza', name: 'Food' },
+              { id: 'cocktail', name: 'Drinks' },
+              { id: 'castle', name: 'Sights' },
+              { id: 'user', name: 'Meeting' },
+              { id: 'music', name: 'Music' }
+            ]
               .map(
                 (ic) => `
-              <button type="button" class="icon-picker-btn ${selectedIcon === ic ? 'active' : ''}" data-idea-icon="${ic}" title="${ic}">
-                ${getSvgIcon(ic, 18, selectedIcon === ic ? 'var(--accent-blue)' : 'currentColor')}
+              <button type="button" class="icon-picker-btn ${selectedIcon === ic.id ? 'active' : ''}" data-idea-icon="${ic.id}" title="${ic.name}">
+                ${getSvgIcon(ic.id, 18, selectedIcon === ic.id ? 'var(--accent-blue)' : 'currentColor')}
               </button>
             `
               )
@@ -2671,15 +3006,21 @@ function openIdeaModal(trip, existingIdea) {
         </div>
 
         <div class="form-group">
-          <label class="form-label">Applicable Days</label>
-          <div style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto; padding: 4px 0;">
+          <label class="form-label">Applicable Days (Dates & Weekdays)</label>
+          <div style="display: flex; flex-direction: column; gap: 6px; max-height: 150px; overflow-y: auto; padding: 4px 0;">
             ${trip.days
               .map((d) => {
+                const date = getDateForDay(trip.startDate, d.dayNumber);
+                const dayName = WEEKDAYS_SHORT[date.getDay()];
+                const shortDate = formatShortDate(date);
                 const checked = applicableDays.length === 0 || applicableDays.includes(d.dayNumber);
                 return `
-              <label style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; background: var(--bg-canvas); border: 1px solid var(--border-card); font-family: var(--font-mono); font-size: 11px; cursor: pointer;">
-                <input type="checkbox" class="day-checkbox" value="${d.dayNumber}" ${checked ? 'checked' : ''} />
-                Day ${d.dayNumber}
+              <label style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: 6px; background: var(--bg-canvas); border: 1px solid var(--border-card); font-family: var(--font-mono); font-size: 11.5px; cursor: pointer;">
+                <span style="display: flex; align-items: center; gap: 6px;">
+                  <input type="checkbox" class="day-checkbox" value="${d.dayNumber}" ${checked ? 'checked' : ''} />
+                  <strong>Day ${d.dayNumber}</strong> · ${escapeHtml(d.routeTitle || '')}
+                </span>
+                <span style="color: var(--accent-blue);">${dayName} ${shortDate}</span>
               </label>
             `;
               })
@@ -2688,9 +3029,14 @@ function openIdeaModal(trip, existingIdea) {
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="ideaTags">Tags (comma separated)</label>
-          <input class="text-input" id="ideaTags" placeholder="e.g. Any day, 12:00–15:00, free 13:30–15:00" value="${
-            existingIdea?.tags ? existingIdea.tags.map((t) => t.text).join(', ') : ''
+          <label class="form-label" for="ideaCustomTags">Additional Tags (optional, comma-separated)</label>
+          <input class="text-input" id="ideaCustomTags" placeholder="e.g. reservation required, outdoor" value="${
+            existingIdea?.tags
+              ? existingIdea.tags
+                  .filter((t) => !/^\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}/.test(t.text) && !/^free /i.test(t.text) && !/only$|any day$/i.test(t.text))
+                  .map((t) => t.text)
+                  .join(', ')
+              : ''
           }" />
         </div>
 
@@ -2734,28 +3080,58 @@ function openIdeaModal(trip, existingIdea) {
     if (!title) return;
 
     const checkedDays = Array.from(modal.querySelectorAll('.day-checkbox:checked')).map((cb) => Number(cb.value));
-    const allDaysSelected = checkedDays.length === trip.days.length;
+    const isAllDays = checkedDays.length === trip.days.length || checkedDays.length === 0;
 
-    const rawTags = modal.querySelector('#ideaTags').value.split(',').map((s) => s.trim()).filter(Boolean);
-    const tags = rawTags.map((txt) => {
+    const tags = [];
+
+    // 1. Automatic Day / Weekday Range Tag
+    if (checkedDays.length === 1) {
+      const singleDay = checkedDays[0];
+      const singleDate = getDateForDay(trip.startDate, singleDay);
+      if (singleDay === state.activeDayNumber) {
+        tags.push({ icon: 'calendar', text: 'Today only', variant: 'amber' });
+      } else {
+        tags.push({ icon: 'calendar', text: `${WEEKDAYS_SHORT[singleDate.getDay()]} only`, variant: 'amber' });
+      }
+    } else if (checkedDays.length > 1 && checkedDays.length < trip.days.length) {
+      const firstDate = getDateForDay(trip.startDate, checkedDays[0]);
+      const lastDate = getDateForDay(trip.startDate, checkedDays[checkedDays.length - 1]);
+      tags.push({ icon: 'calendar', text: `${WEEKDAYS_SHORT[firstDate.getDay()]}–${WEEKDAYS_SHORT[lastDate.getDay()]}`, variant: 'neutral' });
+    } else {
+      tags.push({ icon: 'calendar', text: 'Any day', variant: 'neutral' });
+    }
+
+    // 2. Time Range Tag & Automatic Free Gap calculation
+    const timeRange = modal.querySelector('#ideaTimeRange').value.trim();
+    if (timeRange) {
+      tags.push({ icon: 'clock', text: timeRange, variant: 'blue' });
+
+      // Calculate free gap against activeDay
+      const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
+      const freeWindow = calculateFreeTimeWindow(activeDay, timeRange);
+      if (freeWindow) {
+        tags.push({ icon: 'check', text: `free ${freeWindow}`, variant: 'green' });
+      }
+    }
+
+    // 3. Additional custom tags
+    const extraRaw = modal.querySelector('#ideaCustomTags').value.split(',').map((s) => s.trim()).filter(Boolean);
+    extraRaw.forEach((txt) => {
       let icon = 'calendar';
       let variant = 'neutral';
-      if (/^\d{1,2}:\d{2}/.test(txt) || /clock/i.test(txt)) {
-        icon = 'clock';
-        variant = 'blue';
-      } else if (/free|ok|yes/i.test(txt)) {
+      if (/free|ok|yes/i.test(txt)) {
         icon = 'check';
         variant = 'green';
-      } else if (/today|only|alert/i.test(txt)) {
+      } else if (/today|alert/i.test(txt)) {
         variant = 'amber';
       }
-      return { text: txt, icon, variant };
+      tags.push({ text: txt, icon, variant });
     });
 
     let item = existingIdea || { id: `pool-${Date.now()}` };
     item.title = title;
     item.icon = selectedIcon;
-    item.applicableDays = allDaysSelected ? [] : checkedDays;
+    item.applicableDays = isAllDays ? [] : checkedDays;
     item.tags = tags;
 
     if (!existingIdea) {
