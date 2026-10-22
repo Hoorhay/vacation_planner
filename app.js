@@ -832,6 +832,10 @@ function renderApp() {
   attachHomeListeners();
   if (activeTrip) {
     attachTripListeners(activeTrip);
+    const activePill = document.querySelector('.day-tab-pill.active');
+    if (activePill) {
+      activePill.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
+    }
   }
 }
 
@@ -1375,8 +1379,57 @@ function attachTripListeners(trip) {
     }
   });
 
+  const dayTabsNav = document.querySelector('.day-tabs-nav');
+  if (dayTabsNav) {
+    let isDown = false;
+    let startX = 0;
+    let scrollStart = 0;
+    let hasDragged = false;
+
+    dayTabsNav.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      isDown = true;
+      hasDragged = false;
+      startX = e.pageX;
+      scrollStart = dayTabsNav.scrollLeft;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDown) return;
+      const dx = e.pageX - startX;
+      if (Math.abs(dx) > 4) {
+        hasDragged = true;
+        dayTabsNav.classList.add('is-dragging');
+      }
+      if (hasDragged) {
+        e.preventDefault();
+        dayTabsNav.scrollLeft = scrollStart - dx;
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!isDown) return;
+      isDown = false;
+      dayTabsNav.classList.remove('is-dragging');
+      if (hasDragged) {
+        dayTabsNav.setAttribute('data-dragged', 'true');
+        setTimeout(() => dayTabsNav.removeAttribute('data-dragged'), 100);
+      }
+    });
+
+    // Translate vertical mouse wheel scrolling into horizontal scroll
+    dayTabsNav.addEventListener('wheel', (e) => {
+      if (e.deltaY !== 0 && Math.abs(e.deltaX) < 1) {
+        e.preventDefault();
+        dayTabsNav.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+  }
+
   document.querySelectorAll('[data-nav-day]').forEach((btn) => {
     btn.addEventListener('click', () => {
+      const nav = btn.closest('.day-tabs-nav');
+      if (nav && nav.hasAttribute('data-dragged')) return;
       const dayNum = Number(btn.getAttribute('data-nav-day'));
       state.activeDayNumber = dayNum;
       renderApp();
@@ -1466,6 +1519,10 @@ function attachTripListeners(trip) {
       e.stopPropagation();
       const itemId = btn.getAttribute('data-delete-item-id');
       const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
+      const item = activeDay.items.find((i) => i.id === itemId);
+      const title = item ? (item.title || item.label || item.badgeLabel || 'this event') : 'this event';
+      if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
+
       activeDay.items = activeDay.items.filter((i) => i.id !== itemId);
       recalculatePoolFreeTags(trip, activeDay);
       touchTrip(trip);
@@ -1492,6 +1549,10 @@ function attachTripListeners(trip) {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const ideaId = btn.getAttribute('data-delete-idea-id');
+      const idea = trip.pool.find((i) => i.id === ideaId);
+      const title = idea ? idea.title : 'this idea';
+      if (!confirm(`Are you sure you want to delete "${title}" from the idea pool?`)) return;
+
       trip.pool = trip.pool.filter((i) => i.id !== ideaId);
       const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
       recalculatePoolFreeTags(trip, activeDay);
@@ -2867,6 +2928,7 @@ function openEventModal(trip, activeDay, existingItem) {
   let currentType = existingItem ? existingItem.type : 'venue';
   let selectedIcon = existingItem ? (existingItem.icon || 'pin') : 'pin';
   let transportMode = existingItem && existingItem.type === 'transport' ? (existingItem.mode || 'flight') : 'flight';
+  const getModeDefaultBadge = (mode) => (mode === 'flight' ? 'Flight' : mode === 'ferry' ? 'Ferry' : 'Drive');
 
   let initialEndTime = existingItem?.endTime || '';
   let initialDurationVal = existingItem?.durationVal || '';
@@ -2917,7 +2979,8 @@ function openEventModal(trip, activeDay, existingItem) {
     venueDurationVal: initialDurationVal,
     venueDurationUnit: initialDurationUnit,
     alertLabel: existingItem?.label || '',
-    transportBadge: existingItem?.badgeLabel || '',
+    transportBadge: existingItem?.badgeLabel || getModeDefaultBadge(transportMode),
+    isBadgeCustom: Boolean(existingItem?.badgeLabel && !['Flight', 'Drive', 'Ferry'].includes(existingItem.badgeLabel.trim())),
     transportNote: existingItem?.note || '',
     fromLabel: existingItem?.from?.label || '',
     fromTime: existingItem?.from?.time || '',
@@ -2964,7 +3027,13 @@ function openEventModal(trip, activeDay, existingItem) {
     if (alertInp) formData.alertLabel = alertInp.value;
 
     const badgeInp = modal.querySelector('#transportBadge');
-    if (badgeInp) formData.transportBadge = badgeInp.value;
+    if (badgeInp) {
+      const val = badgeInp.value.trim();
+      formData.transportBadge = badgeInp.value;
+      if (val && !['Flight', 'Drive', 'Ferry'].includes(val)) {
+        formData.isBadgeCustom = true;
+      }
+    }
 
     const noteInp = modal.querySelector('#transportNote');
     if (noteInp) formData.transportNote = noteInp.value;
@@ -3129,7 +3198,7 @@ function openEventModal(trip, activeDay, existingItem) {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
               <div class="form-group">
                 <label class="form-label" for="transportBadge">Header Badge / Pill *</label>
-                <input class="text-input" id="transportBadge" required placeholder="e.g. Flight · FR1014, Drive" value="${escapeHtml(formData.transportBadge || (transportMode === 'flight' ? 'Flight' : transportMode === 'ferry' ? 'Ferry' : 'Drive'))}" />
+                <input class="text-input" id="transportBadge" required placeholder="${transportMode === 'flight' ? 'e.g. Flight · FR1014' : transportMode === 'ferry' ? 'e.g. Ferry · Kennacraig' : 'e.g. Drive'}" value="${escapeHtml(formData.transportBadge || getModeDefaultBadge(transportMode))}" />
               </div>
               <div class="form-group">
                 <label class="form-label" for="transportNote">Note (optional)</label>
@@ -3336,6 +3405,9 @@ function openEventModal(trip, activeDay, existingItem) {
       btn.addEventListener('click', () => {
         syncDomToFormData();
         currentType = btn.getAttribute('data-type');
+        if (currentType === 'transport' && (!formData.isBadgeCustom || !formData.transportBadge || ['Flight', 'Drive', 'Ferry'].includes(formData.transportBadge.trim()))) {
+          formData.transportBadge = getModeDefaultBadge(transportMode);
+        }
         renderModal();
       });
     });
@@ -3343,7 +3415,12 @@ function openEventModal(trip, activeDay, existingItem) {
     modal.querySelectorAll('.event-type-btn[data-mode]').forEach((btn) => {
       btn.addEventListener('click', () => {
         syncDomToFormData();
-        transportMode = btn.getAttribute('data-mode');
+        const newMode = btn.getAttribute('data-mode');
+        transportMode = newMode;
+        if (!formData.isBadgeCustom || !formData.transportBadge || ['Flight', 'Drive', 'Ferry'].includes(formData.transportBadge.trim())) {
+          formData.transportBadge = getModeDefaultBadge(newMode);
+          formData.isBadgeCustom = false;
+        }
         renderModal();
       });
     });
@@ -3373,6 +3450,9 @@ function openEventModal(trip, activeDay, existingItem) {
     });
 
     modal.querySelector('#modalDeleteEventBtn')?.addEventListener('click', () => {
+      const title = existingItem ? (existingItem.title || existingItem.label || existingItem.badgeLabel || 'this event') : 'this event';
+      if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
+
       activeDay.items = activeDay.items.filter((i) => i.id !== existingItem.id);
       recalculatePoolFreeTags(trip, activeDay);
       touchTrip(trip);
@@ -3590,6 +3670,9 @@ function openIdeaModal(trip, existingIdea) {
   });
 
   modal.querySelector('#modalDeleteIdeaBtn')?.addEventListener('click', () => {
+    const title = existingIdea ? existingIdea.title : 'this idea';
+    if (!confirm(`Are you sure you want to delete "${title}" from the idea pool?`)) return;
+
     trip.pool = trip.pool.filter((i) => i.id !== existingIdea.id);
     const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
     recalculatePoolFreeTags(trip, activeDay);

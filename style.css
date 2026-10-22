@@ -325,10 +325,21 @@ button:focus-visible {
   margin: 2px 0 4px;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  cursor: grab;
+  user-select: none;
 }
 
 .day-tabs-nav::-webkit-scrollbar {
   display: none;
+}
+
+.day-tabs-nav.is-dragging {
+  cursor: grabbing;
+}
+
+.day-tabs-nav.is-dragging .day-tab-pill {
+  cursor: grabbing;
+  pointer-events: none;
 }
 
 .day-tab-pill {
