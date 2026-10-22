@@ -1066,6 +1066,11 @@ function renderTimelineItem(item, isFirst, isLast) {
     timeClass = 'card';
     dotClass = item.mode === 'flight' ? 'flight' : item.mode === 'ferry' ? 'ferry' : 'drive';
 
+    const fromLen = (item.from?.label || '').trim().length;
+    const toLen = (item.to?.label || '').trim().length;
+    const isBothCodes = fromLen > 0 && toLen > 0 && fromLen <= 4 && toLen <= 4;
+    const locationClass = isBothCodes ? 'location-code' : 'location-city';
+
     contentHtml = `
       <div class="transport-card">
         <div class="transport-header" style="color: ${item.badgeColor || 'var(--accent-blue)'}">
@@ -1074,7 +1079,7 @@ function renderTimelineItem(item, isFirst, isLast) {
         </div>
         <div class="transport-route">
           <div class="location-block">
-            <span class="${item.from.label.length <= 4 ? 'location-code' : 'location-city'}">${escapeHtml(item.from.label)}</span>
+            <span class="${locationClass}">${escapeHtml(item.from.label)}</span>
             ${item.from.time ? `<span class="location-time">${escapeHtml(item.from.time)}</span>` : ''}
           </div>
           <div class="connector-line">
@@ -1082,7 +1087,7 @@ function renderTimelineItem(item, isFirst, isLast) {
             <div class="connector-icon">
               ${
                 item.mode === 'flight'
-                  ? getSvgIcon('plane', 17, item.badgeColor || '#6cb8ff')
+                  ? getSvgIcon('plane', 17, item.badgeColor || '#5ed3c4')
                   : item.mode === 'ferry'
                   ? getSvgIcon('ferry', 18, item.badgeColor || '#5ed3c4')
                   : getSvgIcon('car', 18, item.badgeColor || '#d4d4d8')
@@ -1090,7 +1095,7 @@ function renderTimelineItem(item, isFirst, isLast) {
             </div>
           </div>
           <div class="location-block right">
-            <span class="${item.to.label.length <= 4 ? 'location-code' : 'location-city'}">${escapeHtml(item.to.label)}</span>
+            <span class="${locationClass}">${escapeHtml(item.to.label)}</span>
             ${item.to.time ? `<span class="location-time">${escapeHtml(item.to.time)}</span>` : ''}
           </div>
         </div>

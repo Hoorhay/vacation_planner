@@ -685,7 +685,7 @@ button:focus-visible {
 
 .location-city {
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--text-primary);
 }
