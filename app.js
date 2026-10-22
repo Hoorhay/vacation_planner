@@ -1332,50 +1332,18 @@ function attachTripListeners(trip) {
     }
   });
 
-  const routeWrap = document.getElementById('routeTitleWrap');
   const editBtn = document.getElementById('editRouteTitleBtn');
   const titleText = document.getElementById('routeTitleText');
   const { isReadOnly } = getStoredCredentials();
 
-  function startEditingDayTitle() {
-    if (isReadOnly || !routeWrap) return;
+  const handleEditDayTitle = () => {
+    if (isReadOnly) return;
     const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
-    const currentVal = activeDay.routeTitle || `Day ${activeDay.dayNumber}`;
-    routeWrap.innerHTML = `
-      <form id="editRouteTitleForm" class="route-title-edit-form">
-        <input type="text" id="routeTitleInput" class="text-input" value="${escapeHtml(currentVal)}" placeholder="Day ${activeDay.dayNumber} description" />
-        <button type="submit" class="icon-btn" style="color: var(--accent-blue); padding: 4px 8px;" title="Save">${getSvgIcon('check', 14, 'var(--accent-blue)', 2.5)}</button>
-        <button type="button" id="cancelEditRouteBtn" class="icon-btn" style="padding: 4px 8px;" title="Cancel">&#10005;</button>
-      </form>
-    `;
+    openDayTitleModal(trip, activeDay);
+  };
 
-    const form = document.getElementById('editRouteTitleForm');
-    const input = document.getElementById('routeTitleInput');
-    input?.focus();
-    input?.select();
-
-    form?.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const val = input.value.trim() || `Day ${activeDay.dayNumber}`;
-      activeDay.routeTitle = val;
-      touchTrip(trip);
-      saveTripsToStorage(state.trips, true);
-      renderApp();
-    });
-
-    document.getElementById('cancelEditRouteBtn')?.addEventListener('click', () => {
-      renderApp();
-    });
-
-    input?.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        renderApp();
-      }
-    });
-  }
-
-  editBtn?.addEventListener('click', startEditingDayTitle);
-  titleText?.addEventListener('click', startEditingDayTitle);
+  editBtn?.addEventListener('click', handleEditDayTitle);
+  titleText?.addEventListener('click', handleEditDayTitle);
 
   document.getElementById('shareItineraryBtn')?.addEventListener('click', () => {
     openShareModal(trip, state.activeDayNumber);
@@ -1817,6 +1785,59 @@ function openDeleteModal(trip) {
   });
 
   modal.querySelector('#cancelDeleteBtn').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+}
+
+// 5. Day Title / Description Edit Modal
+function openDayTitleModal(trip, activeDay) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'dayTitleModal';
+
+  const currentVal = activeDay.routeTitle || `Day ${activeDay.dayNumber}`;
+
+  modal.innerHTML = `
+    <div class="modal-dialog">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <h3 class="modal-heading">Edit Day ${activeDay.dayNumber} Title</h3>
+        <button type="button" style="color: var(--text-muted); cursor: pointer;" id="cancelDayTitleModalBtn">&#10005;</button>
+      </div>
+
+      <form id="dayTitleForm" style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label" for="dayTitleInput">Day Description / Route</label>
+          <input class="text-input" id="dayTitleInput" placeholder="e.g. Prague ➔ Islay, Islay Distilleries" value="${escapeHtml(currentVal)}" autofocus />
+        </div>
+
+        <div class="dialog-actions">
+          <button type="button" class="btn-secondary" id="cancelDayTitleFormBtn">Cancel</button>
+          <button type="submit" class="btn-secondary" style="background: var(--accent-blue); color: #09090b; border: none; font-weight: 600;">Save Title</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const input = modal.querySelector('#dayTitleInput');
+  input?.focus();
+  input?.select();
+
+  modal.querySelector('#cancelDayTitleModalBtn').addEventListener('click', () => modal.remove());
+  modal.querySelector('#cancelDayTitleFormBtn').addEventListener('click', () => modal.remove());
+
+  modal.querySelector('#dayTitleForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = input.value.trim() || `Day ${activeDay.dayNumber}`;
+    activeDay.routeTitle = val;
+    touchTrip(trip);
+    saveTripsToStorage(state.trips, true);
+    modal.remove();
+    renderApp();
+  });
+
   modal.addEventListener('click', (e) => {
     if (e.target === modal) modal.remove();
   });

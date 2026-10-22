@@ -491,23 +491,6 @@ button:focus-visible {
   opacity: 1;
 }
 
-.route-title-edit-form {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-}
-
-.route-title-edit-form input {
-  flex: 1;
-  height: 32px;
-  padding: 4px 8px;
-  font-size: 15px;
-  font-weight: 600;
-  border-radius: 6px;
-}
-
 /* Timeline 3-column Grid */
 .timeline-list {
   list-style: none;
@@ -632,6 +615,7 @@ button:focus-visible {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
+  padding-right: 76px;
   border-radius: var(--radius-badge);
   background: var(--accent-alert-bg);
   border: 1px solid var(--accent-alert-border);
@@ -658,6 +642,7 @@ button:focus-visible {
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  padding-right: 76px;
 }
 
 .transport-route {
@@ -739,6 +724,7 @@ button:focus-visible {
   flex-direction: column;
   gap: 3px;
   min-width: 0;
+  padding-right: 76px;
 }
 
 .venue-title {
@@ -774,6 +760,8 @@ button:focus-visible {
   align-items: center;
   gap: 8px;
   line-height: 20px;
+  min-height: 26px;
+  padding-right: 76px;
 }
 
 /* Transit Chain */
@@ -1457,15 +1445,12 @@ button:focus-visible {
 /* Day Planning & Interactive Timeline Styles */
 .timeline-item-wrapper {
   position: relative;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
+  display: block;
   width: 100%;
 }
 
 .timeline-item-body {
-  flex: 1;
+  width: 100%;
   min-width: 0;
   cursor: pointer;
   border-radius: var(--radius-card);
@@ -1473,25 +1458,40 @@ button:focus-visible {
 }
 
 .timeline-item-body:hover {
-  opacity: 0.92;
+  opacity: 0.95;
 }
 
 .timeline-item-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding-top: 2px;
+  gap: 3px;
   opacity: 0;
   transition: opacity 0.15s ease;
+  z-index: 5;
+  background: rgba(18, 19, 23, 0.9);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--border-card);
+  border-radius: 6px;
+  padding: 2px 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .timeline-item-wrapper:hover .timeline-item-actions {
   opacity: 1;
 }
 
+.timeline-item-wrapper:has(.simple-venue-item) .timeline-item-actions {
+  top: 1px;
+  right: 0;
+}
+
 @media (hover: none) {
   .timeline-item-actions {
-    opacity: 0.7;
+    opacity: 0.85;
   }
 }
 
