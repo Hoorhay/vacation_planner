@@ -86,6 +86,135 @@ function getDurationFromDates(startDateStr, endDateStr) {
   return Math.max(1, diffDays + 1);
 }
 
+// Time Input Masking (Digits-only input with automatic colon insertion)
+function formatTimeMask(raw) {
+  if (!raw) return '';
+  let digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+
+  // Handle 3-digit shorthand (e.g. "930" -> "0930")
+  if (digits.length === 3 && Number(digits[0]) >= 3) {
+    digits = `0${digits}`;
+  }
+  digits = digits.slice(0, 4);
+
+  if (digits.length === 1) {
+    const d0 = Number(digits[0]);
+    if (d0 >= 3) return `0${d0}:`;
+    return digits;
+  }
+
+  if (digits.length === 2) {
+    let hh = Number(digits);
+    if (hh > 23) hh = 23;
+    return `${String(hh).padStart(2, '0')}:`;
+  }
+
+  if (digits.length === 3) {
+    let hh = Number(digits.slice(0, 2));
+    if (hh > 23) hh = 23;
+    let m0 = Number(digits[2]);
+    if (m0 > 5) m0 = 5;
+    return `${String(hh).padStart(2, '0')}:${m0}`;
+  }
+
+  let hh = Number(digits.slice(0, 2));
+  if (hh > 23) hh = 23;
+  let mm = Number(digits.slice(2, 4));
+  if (mm > 59) mm = 59;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
+function attachTimeMask(input) {
+  if (!input) return;
+  input.setAttribute('inputmode', 'numeric');
+
+  input.addEventListener('input', () => {
+    input.value = formatTimeMask(input.value);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && input.value.endsWith(':')) {
+      e.preventDefault();
+      input.value = input.value.slice(0, -2);
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    const val = input.value.trim();
+    if (!val) return;
+    const digits = val.replace(/\D/g, '');
+    if (!digits) {
+      input.value = '';
+    } else if (digits.length === 1) {
+      input.value = `0${digits}:00`;
+    } else if (digits.length === 2) {
+      const hh = Math.min(23, Number(digits));
+      input.value = `${String(hh).padStart(2, '0')}:00`;
+    } else if (digits.length === 3) {
+      const hh = Math.min(23, Number(digits.slice(0, 2)));
+      const mm = Math.min(59, Number(digits[2] + '0'));
+      input.value = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    } else {
+      const hh = Math.min(23, Number(digits.slice(0, 2)));
+      const mm = Math.min(59, Number(digits.slice(2, 4)));
+      input.value = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    }
+  });
+}
+
+function formatTimeRangeMask(raw) {
+  if (!raw) return '';
+  const digits = raw.replace(/\D/g, '').slice(0, 8);
+  if (!digits) return '';
+
+  if (digits.length <= 4) {
+    return formatTimeMask(digits);
+  }
+
+  const startDigits = digits.slice(0, 4);
+  const endDigits = digits.slice(4);
+
+  const startFormatted = formatTimeMask(startDigits);
+  const endFormatted = formatTimeMask(endDigits);
+
+  return `${startFormatted}–${endFormatted}`;
+}
+
+function attachTimeRangeMask(input) {
+  if (!input) return;
+  input.setAttribute('inputmode', 'numeric');
+
+  input.addEventListener('input', () => {
+    input.value = formatTimeRangeMask(input.value);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && (input.value.endsWith('–') || input.value.endsWith(':'))) {
+      e.preventDefault();
+      input.value = input.value.slice(0, -2);
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    const val = input.value.trim();
+    if (!val) return;
+    const parts = val.split(/[–-]/);
+    if (parts.length === 1) {
+      const d = parts[0].replace(/\D/g, '');
+      if (d.length >= 2) {
+        input.value = formatTimeMask(d);
+      }
+    } else if (parts.length === 2) {
+      const d1 = parts[0].replace(/\D/g, '');
+      const d2 = parts[1].replace(/\D/g, '');
+      if (d1 && d2) {
+        input.value = `${formatTimeMask(d1)}–${formatTimeMask(d2)}`;
+      }
+    }
+  });
+}
+
 function getTripDateStatus(trip) {
   if (!trip || !trip.startDate) {
     return { status: 'none', daysUntil: 0, todayDayNumber: null, todayDate: null };
@@ -2803,6 +2932,11 @@ function openEventModal(trip, activeDay, existingItem) {
   }
 
   function attachModalHandlers() {
+    attachTimeMask(modal.querySelector('#eventTime'));
+    attachTimeMask(modal.querySelector('#fromTime'));
+    attachTimeMask(modal.querySelector('#toTime'));
+    attachTimeRangeMask(modal.querySelector('#venueTimeWindow'));
+
     modal.querySelector('#cancelEventModalBtn').addEventListener('click', () => modal.remove());
     modal.querySelector('#cancelEventFormBtn').addEventListener('click', () => modal.remove());
 
@@ -3054,6 +3188,7 @@ function openIdeaModal(trip, existingIdea) {
   `;
 
   document.body.appendChild(modal);
+  attachTimeRangeMask(modal.querySelector('#ideaTimeRange'));
 
   modal.querySelector('#cancelIdeaModalBtn').addEventListener('click', () => modal.remove());
   modal.querySelector('#cancelIdeaFormBtn').addEventListener('click', () => modal.remove());
