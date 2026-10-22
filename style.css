@@ -14,7 +14,7 @@
   --text-muted: #a1a1aa;
   --text-dim: #71717a;
 
-  --accent-blue: #6cb8ff;
+  --accent-blue: #5ED3C4;
   --accent-alert: #ff6b5e;
   --accent-alert-bg: rgba(255, 107, 94, 0.12);
   --accent-alert-border: rgba(255, 107, 94, 0.4);
@@ -209,7 +209,7 @@ button:focus-visible {
 
 .trip-card.active {
   border-color: var(--accent-blue);
-  background: rgba(56, 189, 248, 0.08);
+  background: rgba(94, 211, 196, 0.08);
   box-shadow: 0 0 0 1px var(--accent-blue);
 }
 
@@ -361,7 +361,7 @@ button:focus-visible {
 }
 
 .day-tab-pill.active {
-  background: rgba(56, 189, 248, 0.12);
+  background: rgba(94, 211, 196, 0.12);
   border-color: var(--accent-blue);
 }
 
@@ -449,8 +449,8 @@ button:focus-visible {
   font-size: 12px;
   font-weight: 600;
   color: var(--accent-blue);
-  background: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: rgba(94, 211, 196, 0.08);
+  border: 1px solid rgba(94, 211, 196, 0.2);
   padding: 6px 12px;
   border-radius: var(--radius-pill);
 }
@@ -1501,8 +1501,8 @@ button:focus-visible {
   gap: 8px;
   padding: 8px 16px;
   border-radius: var(--radius-pill);
-  border: 1px dashed rgba(56, 189, 248, 0.45);
-  background: rgba(56, 189, 248, 0.05);
+  border: 1px dashed rgba(94, 211, 196, 0.45);
+  background: rgba(94, 211, 196, 0.05);
   color: var(--accent-blue);
   font-family: var(--font-mono);
   font-size: 12px;
@@ -1512,7 +1512,7 @@ button:focus-visible {
 }
 
 .add-event-btn:hover {
-  background: rgba(56, 189, 248, 0.12);
+  background: rgba(94, 211, 196, 0.12);
   border-color: var(--accent-blue);
 }
 
@@ -1603,7 +1603,7 @@ button:focus-visible {
 
 .icon-picker-btn.active {
   border-color: var(--accent-blue);
-  background: rgba(56, 189, 248, 0.12);
+  background: rgba(94, 211, 196, 0.12);
   color: var(--accent-blue);
 }
 
@@ -1623,7 +1623,7 @@ button:focus-visible {
 .duration-chip-btn:hover {
   border-color: var(--accent-blue);
   color: var(--text-primary);
-  background: rgba(56, 189, 248, 0.08);
+  background: rgba(94, 211, 196, 0.08);
 }
 
 /* Compact Time & Duration Controls */

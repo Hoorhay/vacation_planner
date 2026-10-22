@@ -277,123 +277,6 @@ function sortDayItems(items) {
   return result;
 }
 
-// Reference Mockup Seed (Prague ➔ Islay / Whisky Show 2027)
-const DEMO_TRIP = {
-  id: 'whisky-show-2027',
-  title: 'Whisky Show 2027',
-  startDate: '2027-09-23',
-  totalDays: 10,
-  initialDayNumber: 3,
-  days: [
-    {
-      id: 'day-1',
-      dayNumber: 1,
-      routeTitle: 'Pre-trip & Packing',
-      items: [{ id: 'd1-1', type: 'alert', time: '18:00', label: 'check-in online & passports check' }]
-    },
-    {
-      id: 'day-2',
-      dayNumber: 2,
-      routeTitle: 'Final preparations',
-      items: [{ id: 'd2-1', type: 'venue', time: '19:00', title: 'Early rest before flight', icon: 'bed' }]
-    },
-    {
-      id: 'day-3',
-      dayNumber: 3,
-      routeTitle: 'Prague ➔ Islay',
-      items: [
-        { id: 'sat-1', type: 'alert', time: '05:00', label: 'departure from hotel' },
-        {
-          id: 'sat-2',
-          type: 'transit_chain',
-          time: '05:15',
-          steps: [
-            { stop: 'Křižíkova', lineBadge: { type: 'metro', label: 'B', sublabel: 'M', bgColor: '#F5B731', textColor: '#1B1300' } },
-            { stop: 'Zličín', lineBadge: { type: 'bus', label: '#100', borderColor: '#6CB8FF', textColor: '#6CB8FF' } },
-            { stop: 'PRG T2', note: 'arrival ~6:15' }
-          ]
-        },
-        { id: 'sat-3', type: 'alert', time: '07:30', label: 'gate closes' },
-        {
-          id: 'sat-4',
-          type: 'transport',
-          mode: 'flight',
-          time: '08:00',
-          badgeLabel: 'Flight · FR1014',
-          badgeColor: '#6CB8FF',
-          from: { label: 'PRG', time: '08:00' },
-          to: { label: 'EDI', time: '10:00' }
-        },
-        { id: 'sat-5', type: 'venue', time: '11:00', title: 'Pick up car', subtitle: 'SIXT · reservation 12345', icon: 'car' },
-        {
-          id: 'sat-6',
-          type: 'transport',
-          mode: 'drive',
-          badgeLabel: 'Drive · estimated 2 hours',
-          badgeColor: '#D4D4D8',
-          from: { label: 'Edinburgh' },
-          to: { label: 'Kennacraig' }
-        },
-        { id: 'sat-7', type: 'alert', time: '15:30', label: 'ferry check-in' },
-        {
-          id: 'sat-8',
-          type: 'transport',
-          mode: 'ferry',
-          time: '16:00',
-          badgeLabel: 'Ferry',
-          badgeColor: '#5ED3C4',
-          from: { label: 'Kennacraig', time: '16:00' },
-          to: { label: 'Islay', time: '18:00' }
-        },
-        { id: 'sat-9', type: 'venue', title: 'Islay Hotel', icon: 'bed' },
-        { id: 'sat-10', type: 'venue', time: '20:00', title: 'Super Bar', icon: 'cocktail' }
-      ]
-    },
-    {
-      id: 'day-4',
-      dayNumber: 4,
-      routeTitle: 'Islay',
-      items: [
-        { id: 'sun-1', type: 'alert', time: '09:00', label: 'leave for Kilchoman' },
-        { id: 'sun-2', type: 'venue', time: '09:30', title: 'Kilchoman', subtitle: 'visit and brunch', icon: 'pin' },
-        { id: 'sun-3', type: 'alert', time: '10:30', label: 'leave for Bruichladdich' },
-        { id: 'sun-4', type: 'alert', time: '11:00', label: 'check-in Bruichladdich' },
-        {
-          id: 'sun-5',
-          type: 'venue',
-          time: '11:15',
-          title: 'Bruichladdich',
-          subtitle: 'Warehouse # Experience',
-          timeWindow: '11:15–13:30',
-          icon: 'pin'
-        }
-      ]
-    },
-    { id: 'day-5', dayNumber: 5, routeTitle: 'Islay Distilleries South', items: [] },
-    { id: 'day-6', dayNumber: 6, routeTitle: 'Bowmore & Central', items: [] },
-    { id: 'day-7', dayNumber: 7, routeTitle: 'Jura Excursion', items: [] },
-    { id: 'day-8', dayNumber: 8, routeTitle: 'Islay North & Port Askaig', items: [] },
-    { id: 'day-9', dayNumber: 9, routeTitle: 'Return to Edinburgh', items: [] },
-    { id: 'day-10', dayNumber: 10, routeTitle: 'Edinburgh ➔ Prague', items: [] }
-  ],
-  pool: [
-    { id: 'p-1', title: 'Meet Marion', icon: 'user', tags: [{ icon: 'calendar', text: 'Sat–Tue', variant: 'neutral' }], applicableDays: [3, 4, 5, 6] },
-    {
-      id: 'p-2',
-      title: 'Visit Bowmore',
-      icon: 'pin',
-      tags: [
-        { icon: 'calendar', text: 'Any day', variant: 'neutral' },
-        { icon: 'clock', text: '12:00–15:00', variant: 'blue' },
-        { icon: 'check', text: 'free 13:30–15:00', variant: 'green' }
-      ],
-      applicableDays: [3, 4, 5, 6, 7]
-    },
-    { id: 'p-3', title: 'Watch fireworks', icon: 'sparkles', tags: [{ icon: 'calendar', text: 'Today only', variant: 'amber' }, { icon: 'clock', text: '22:00', variant: 'blue' }], applicableDays: [3] },
-    { id: 'p-4', title: 'Disco at Oldies pub', icon: 'music', tags: [{ icon: 'calendar', text: 'Sunday only', variant: 'amber' }, { icon: 'clock', text: '23:00', variant: 'blue' }], applicableDays: [4] }
-  ]
-};
-
 // SVG Icon Helper
 function getSvgIcon(name, size = 18, color = 'currentColor', strokeWidth = 1.75) {
   const common = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"`;
@@ -2224,11 +2107,6 @@ function openConfigModal() {
           <input class="text-input" id="cfgTracker" placeholder="Tracker code" value="${escapeHtml(tracker)}" />
         </div>
 
-        <label style="display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); cursor: pointer;">
-          <input type="checkbox" id="cfgIsRo" ${isReadOnly ? 'checked' : ''} />
-          Force Read-Only mode on this device
-        </label>
-
         ${
           dbUrl && tracker
             ? `
@@ -2246,7 +2124,6 @@ function openConfigModal() {
         }
 
         <div class="dialog-actions">
-          <button type="button" class="btn-secondary" id="loadDemoTripBtn" style="color: var(--accent-blue); border-color: rgba(56, 189, 248, 0.4); margin-right: 6px;">Load Demo Trip</button>
           <button type="button" class="btn-secondary" id="clearAllTripsBtn" style="color: var(--accent-alert); border-color: rgba(255, 107, 94, 0.4); margin-right: auto;">Clear All</button>
           <button type="button" class="btn-secondary" id="cancelConfigBtn">Close</button>
           <button type="submit" class="btn-secondary" style="background: var(--accent-blue); color: #09090b; border: none;">Save</button>
@@ -2261,7 +2138,6 @@ function openConfigModal() {
     e.preventDefault();
     const newDb = modal.querySelector('#cfgDbUrl').value.trim();
     const newTracker = modal.querySelector('#cfgTracker').value.trim();
-    const newIsRo = modal.querySelector('#cfgIsRo').checked;
 
     if (newDb) {
       localStorage.setItem(STORAGE_KEY_DB_URL, newDb);
@@ -2275,24 +2151,6 @@ function openConfigModal() {
       localStorage.removeItem(STORAGE_KEY_TRACKER);
     }
 
-    localStorage.setItem(STORAGE_KEY_IS_RO, newIsRo ? 'true' : 'false');
-
-    modal.remove();
-    renderApp();
-  });
-
-  modal.querySelector('#loadDemoTripBtn')?.addEventListener('click', () => {
-    const existingIndex = state.trips.findIndex((t) => t.id === DEMO_TRIP.id);
-    const demoCopy = JSON.parse(JSON.stringify(DEMO_TRIP));
-    demoCopy.updatedAt = Date.now();
-    if (existingIndex >= 0) {
-      state.trips[existingIndex] = demoCopy;
-    } else {
-      state.trips.push(demoCopy);
-    }
-    saveTripsToStorage(state.trips, true);
-    state.activeTripId = demoCopy.id;
-    state.activeDayNumber = 3;
     modal.remove();
     renderApp();
   });
@@ -2427,7 +2285,7 @@ function renderItineraryCanvas(trip, dayNumber) {
 
   // Badge
   ctx.font = '600 11px "IBM Plex Mono", monospace';
-  ctx.fillStyle = '#38bdf8';
+  ctx.fillStyle = '#5ED3C4';
   ctx.fillText('VACATION PLANNER', 36, 48);
 
   // Trip Title
@@ -2461,7 +2319,7 @@ function renderItineraryCanvas(trip, dayNumber) {
     if (!isSingleDay) {
       const date = getDateForDay(trip.startDate, day.dayNumber);
       ctx.font = '700 14px "IBM Plex Sans", -apple-system, sans-serif';
-      ctx.fillStyle = '#38bdf8';
+      ctx.fillStyle = '#5ED3C4';
       const dayTitle = day.routeTitle ? `Day ${day.dayNumber}: ${day.routeTitle}` : `Day ${day.dayNumber}`;
       ctx.fillText(`${dayTitle} (${formatShortDate(date)})`, 36, curY);
       curY += 26;
@@ -2491,7 +2349,7 @@ function renderItineraryCanvas(trip, dayNumber) {
         // Time
         if (item.time) {
           ctx.font = '600 12px "IBM Plex Mono", monospace';
-          ctx.fillStyle = '#38bdf8';
+          ctx.fillStyle = '#5ED3C4';
           ctx.fillText(item.time, timeX, curY + 4);
         } else {
           ctx.font = '500 12px "IBM Plex Mono", monospace';
@@ -2502,7 +2360,7 @@ function renderItineraryCanvas(trip, dayNumber) {
         // Dot
         ctx.beginPath();
         ctx.arc(dotX, curY, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#38bdf8';
+        ctx.fillStyle = '#5ED3C4';
         ctx.fill();
 
         // Title
@@ -2641,7 +2499,7 @@ function openShareModal(trip, initialDayNumber) {
       const text = getFormattedItineraryText(trip, isFullTrip ? null : selectedDay);
       try {
         await navigator.clipboard.writeText(text);
-        copyBtn.innerHTML = `${getSvgIcon('check', 14, '#38bdf8', 2.5)} Copied to Clipboard!`;
+        copyBtn.innerHTML = `${getSvgIcon('check', 14, '#5ED3C4', 2.5)} Copied to Clipboard!`;
         setTimeout(() => {
           if (copyBtn) copyBtn.innerHTML = `${getSvgIcon('copy', 14, 'currentColor')} Copy Text`;
         }, 2000);
@@ -2996,6 +2854,7 @@ function openEventModal(trip, activeDay, existingItem) {
   };
 
   const COLOR_PRESETS = [
+    { label: 'Mint Teal', hex: '#5ED3C4', text: '#09090b' },
     { label: 'Gold', hex: '#F5B731', text: '#1B1300' },
     { label: 'Blue', hex: '#6CB8FF', text: '#6CB8FF' },
     { label: 'Green', hex: '#4CC77D', text: '#4CC77D' },
