@@ -1188,62 +1188,6 @@ button:focus-visible {
   border-color: var(--accent-blue);
 }
 
-/* Segmented time range input: HH : MM – HH : MM */
-.time-range-boxes {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-mono);
-}
-
-.time-box {
-  box-sizing: border-box;
-  width: 52px;
-  min-width: 0;
-  padding: 10px 0;
-  text-align: center;
-  background: var(--bg-canvas);
-  border: 1px solid var(--border-card);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 16px;
-}
-
-.time-box::placeholder {
-  color: var(--text-muted);
-}
-
-.time-box:focus {
-  outline: none;
-  border-color: var(--accent-blue);
-}
-
-.time-sep {
-  color: var(--text-muted);
-  font-size: 16px;
-  user-select: none;
-}
-
-.time-dash {
-  margin: 0 4px;
-}
-
-.time-range-boxes.invalid .time-box {
-  border-color: var(--accent-alert);
-}
-
-.time-range-error {
-  min-height: 0;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--accent-alert);
-}
-
-.time-range-error:not(:empty) {
-  margin-top: 4px;
-}
-
 /* DateInput Group */
 .date-input-group {
   position: relative;

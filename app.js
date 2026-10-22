@@ -215,128 +215,6 @@ function attachTimeRangeMask(input) {
   });
 }
 
-// Segmented time range input: [HH]:[MM] – [HH]:[MM]
-// Separators are fixed on screen; the user only types digits. Value format stays "HH:MM–HH:MM".
-function renderTimeRangeBoxesHtml(id, initialValue) {
-  const m = String(initialValue || '').match(/(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})/);
-  const vals = m ? [m[1].padStart(2, '0'), m[2], m[3].padStart(2, '0'), m[4]] : ['', '', '', ''];
-  const labels = ['Start hour', 'Start minute', 'End hour', 'End minute'];
-  const box = (i) =>
-    `<input class="time-box" type="text" inputmode="numeric" autocomplete="off" data-box="${i}" placeholder="${i % 2 === 0 ? 'HH' : 'MM'}" aria-label="${labels[i]}" value="${vals[i]}" />`;
-  return `
-    <div class="time-range-boxes" id="${id}">
-      ${box(0)}<span class="time-sep">:</span>${box(1)}<span class="time-sep time-dash">–</span>${box(2)}<span class="time-sep">:</span>${box(3)}
-    </div>
-    <div class="time-range-error" id="${id}Error" role="alert"></div>
-  `;
-}
-
-function attachTimeRangeBoxes(container) {
-  if (!container) return;
-  const boxes = Array.from(container.querySelectorAll('.time-box'));
-  const errorEl = container.nextElementSibling;
-
-  const clearError = () => {
-    container.classList.remove('invalid');
-    if (errorEl) errorEl.textContent = '';
-  };
-
-  // Distribute typed/pasted digits over the boxes starting at startIdx.
-  // A first digit that can't start a valid number (hours > 2, minutes > 5) is zero-padded, e.g. "9" -> "09".
-  const place = (startIdx, rawDigits) => {
-    let digits = rawDigits;
-    let idx = startIdx;
-    let lastIdx = startIdx;
-    let lastComplete = false;
-    while (digits && idx < 4) {
-      const isHour = idx % 2 === 0;
-      const maxFirst = isHour ? 2 : 5;
-      let chunk;
-      if (Number(digits[0]) > maxFirst) {
-        chunk = `0${digits[0]}`;
-        digits = digits.slice(1);
-      } else {
-        chunk = digits.slice(0, 2);
-        digits = digits.slice(2);
-      }
-      if (chunk.length === 2 && isHour && Number(chunk) > 23) chunk = '23';
-      boxes[idx].value = chunk;
-      lastIdx = idx;
-      lastComplete = chunk.length === 2;
-      idx++;
-    }
-    if (lastComplete && lastIdx < 3) {
-      boxes[lastIdx + 1].focus();
-    } else {
-      boxes[lastIdx].focus();
-    }
-  };
-
-  boxes.forEach((box, i) => {
-    box.addEventListener('focus', () => box.select());
-
-    box.addEventListener('input', () => {
-      clearError();
-      const digits = box.value.replace(/\D/g, '');
-      if (!digits) {
-        box.value = '';
-        return;
-      }
-      place(i, digits);
-    });
-
-    box.addEventListener('keydown', (e) => {
-      if (e.key === 'Backspace' && box.value === '' && i > 0) {
-        e.preventDefault();
-        const prev = boxes[i - 1];
-        prev.value = prev.value.slice(0, -1);
-        prev.focus();
-        clearError();
-      } else if (e.key === 'ArrowLeft' && box.selectionStart === 0 && i > 0) {
-        e.preventDefault();
-        boxes[i - 1].focus();
-      } else if (e.key === 'ArrowRight' && box.selectionEnd === box.value.length && i < 3) {
-        e.preventDefault();
-        boxes[i + 1].focus();
-      } else if ([':', '-', '–', '.', ',', ' '].includes(e.key)) {
-        // Typing a separator jumps to the next box (pads a single digit, e.g. "9" -> "09")
-        e.preventDefault();
-        if (box.value.length === 1) box.value = `0${box.value}`;
-        if (box.value && i < 3) boxes[i + 1].focus();
-      }
-    });
-
-    box.addEventListener('blur', () => {
-      if (box.value.length === 1) box.value = `0${box.value}`;
-    });
-  });
-}
-
-// Reads the boxes. Empty is valid (the field is optional).
-function readTimeRangeBoxes(container) {
-  const boxes = Array.from(container.querySelectorAll('.time-box'));
-  const vals = boxes.map((b) => b.value.trim());
-  if (vals.every((v) => v === '')) return { value: '', error: null };
-  if (vals.some((v) => v.length !== 2)) {
-    return { value: '', error: 'Fill in all four boxes, e.g. 12:00 – 15:00' };
-  }
-  const start = Number(vals[0]) * 60 + Number(vals[1]);
-  const end = Number(vals[2]) * 60 + Number(vals[3]);
-  if (end <= start) {
-    return { value: '', error: 'End time must be after the start time' };
-  }
-  return { value: `${vals[0]}:${vals[1]}–${vals[2]}:${vals[3]}`, error: null };
-}
-
-function showTimeRangeError(container, message) {
-  container.classList.add('invalid');
-  const errorEl = container.nextElementSibling;
-  if (errorEl) errorEl.textContent = message;
-  const boxes = container.querySelectorAll('.time-box');
-  const firstEmpty = Array.from(boxes).find((b) => b.value.length !== 2);
-  (firstEmpty || boxes[boxes.length - 1]).focus();
-}
-
 function getTripDateStatus(trip) {
   if (!trip || !trip.startDate) {
     return { status: 'none', daysUntil: 0, todayDayNumber: null, todayDate: null };
@@ -3147,7 +3025,7 @@ function openEventModal(trip, activeDay, existingItem) {
 
             <!-- 2. Title below time -->
             <div class="form-group">
-              <label class="form-label" for="venueTitle">Title / Venue *</label>
+              <label class="form-label" for="venueTitle">Title *</label>
               <input class="text-input" id="venueTitle" required value="${escapeHtml(formData.venueTitle)}" autofocus />
             </div>
 
@@ -3190,7 +3068,7 @@ function openEventModal(trip, activeDay, existingItem) {
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="alertLabel">Alert / Deadline Message *</label>
+              <label class="form-label" for="alertLabel">Alert Title *</label>
               <input class="text-input" id="alertLabel" required value="${escapeHtml(formData.alertLabel)}" />
             </div>
           `
@@ -3576,6 +3454,9 @@ function openIdeaModal(trip, existingIdea) {
   let applicableDays = existingIdea ? (existingIdea.applicableDays || []) : [];
 
   const timeRangeExisting = existingIdea?.tags?.find((t) => /^\d{1,2}:\d{2}\s*[–-]\s*\d{1,2}:\d{2}/.test(t.text))?.text || '';
+  const timeRangeParts = timeRangeExisting.match(/(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})/);
+  const timeRangeStart = timeRangeParts ? `${timeRangeParts[1].padStart(2, '0')}:${timeRangeParts[2]}` : '';
+  const timeRangeEnd = timeRangeParts ? `${timeRangeParts[3].padStart(2, '0')}:${timeRangeParts[4]}` : '';
 
   modal.innerHTML = `
     <div class="modal-dialog">
@@ -3586,15 +3467,25 @@ function openIdeaModal(trip, existingIdea) {
 
       <form id="ideaForm" style="display: flex; flex-direction: column; gap: 14px;">
         <div class="form-group">
-          <label class="form-label" for="ideaTitle">Idea / Candidate Title *</label>
+          <label class="form-label" for="ideaTitle">Idea Title *</label>
           <input class="text-input" id="ideaTitle" required value="${escapeHtml(existingIdea?.title || '')}" autofocus />
         </div>
 
         <div class="form-group">
-          <label class="form-label">Time Window / Range (optional, 24-hour)</label>
-          ${renderTimeRangeBoxesHtml('ideaTimeRange', timeRangeExisting)}
+          <label class="form-label">Time Window (optional)</label>
+          <div class="time-duration-row">
+            <div class="form-group" style="width: auto;">
+              <label class="form-label" for="ideaTimeStart" style="white-space: nowrap;">Start Time</label>
+              <input class="text-input time-input-compact" id="ideaTimeStart" placeholder="12:00" value="${escapeHtml(timeRangeStart)}" />
+            </div>
+            <div class="form-group" style="width: auto;">
+              <label class="form-label" for="ideaTimeEnd" style="white-space: nowrap;">End Time</label>
+              <input class="text-input time-input-compact" id="ideaTimeEnd" placeholder="15:00" value="${escapeHtml(timeRangeEnd)}" />
+            </div>
+          </div>
+          <span id="ideaTimeError" role="alert" style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-alert);"></span>
           <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-            A green "free XX:XX–YY:YY" pill will be automatically calculated against the day's schedule!
+            Possible times will be automatically calculated against the day's schedule
           </span>
         </div>
 
@@ -3668,7 +3559,15 @@ function openIdeaModal(trip, existingIdea) {
   `;
 
   document.body.appendChild(modal);
-  attachTimeRangeBoxes(modal.querySelector('#ideaTimeRange'));
+  attachTimeMask(modal.querySelector('#ideaTimeStart'));
+  attachTimeMask(modal.querySelector('#ideaTimeEnd'));
+  ['#ideaTimeStart', '#ideaTimeEnd'].forEach((sel) => {
+    modal.querySelector(sel).addEventListener('input', () => {
+      modal.querySelector('#ideaTimeError').textContent = '';
+      modal.querySelector('#ideaTimeStart').style.borderColor = '';
+      modal.querySelector('#ideaTimeEnd').style.borderColor = '';
+    });
+  });
 
   modal.querySelectorAll('.day-checkbox').forEach((cb) => {
     cb.addEventListener('change', () => {
@@ -3708,11 +3607,32 @@ function openIdeaModal(trip, existingIdea) {
     const title = modal.querySelector('#ideaTitle').value.trim();
     if (!title) return;
 
-    const timeRangeBoxes = modal.querySelector('#ideaTimeRange');
-    const timeRangeResult = readTimeRangeBoxes(timeRangeBoxes);
-    if (timeRangeResult.error) {
-      showTimeRangeError(timeRangeBoxes, timeRangeResult.error);
-      return;
+    // Time window: both empty is fine (optional); otherwise both must be valid and end after start
+    const startInp = modal.querySelector('#ideaTimeStart');
+    const endInp = modal.querySelector('#ideaTimeEnd');
+    const toHHMM = (v) => {
+      const m = v.trim().match(/^(\d{1,2}):(\d{2})$/);
+      if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) return null;
+      return `${m[1].padStart(2, '0')}:${m[2]}`;
+    };
+    let timeRangeValue = '';
+    if (startInp.value.trim() || endInp.value.trim()) {
+      const s = toHHMM(startInp.value);
+      const en = toHHMM(endInp.value);
+      let timeError = '';
+      if (!s || !en) {
+        timeError = 'Enter both start and end time, e.g. 12:00 and 15:00';
+      } else if (en <= s) {
+        timeError = 'End time must be after the start time';
+      }
+      if (timeError) {
+        modal.querySelector('#ideaTimeError').textContent = timeError;
+        startInp.style.borderColor = 'var(--accent-alert)';
+        endInp.style.borderColor = 'var(--accent-alert)';
+        (!s ? startInp : endInp).focus();
+        return;
+      }
+      timeRangeValue = `${s}–${en}`;
     }
 
     const checkedDays = Array.from(modal.querySelectorAll('.day-checkbox:checked')).map((cb) => Number(cb.value));
@@ -3738,7 +3658,7 @@ function openIdeaModal(trip, existingIdea) {
     }
 
     // 2. Time Range Tag & Automatic Free Gap calculation
-    const timeRange = timeRangeResult.value;
+    const timeRange = timeRangeValue;
     const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
     if (timeRange) {
       tags.push({ icon: 'clock', text: timeRange, variant: 'blue' });
