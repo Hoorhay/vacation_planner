@@ -1146,25 +1146,26 @@ function renderTimelineItem(item, isFirst, isLast) {
         </div>
       `;
       if (idx < item.steps.length - 1) {
+        const pillColor = step.lineBadge?.borderColor || step.lineBadge?.bgColor || 'var(--accent-blue)';
         chainSteps += `
           <div class="transit-connector">
             <div class="transit-connector-line"></div>
             <div>
               ${
                 step.lineBadge?.type === 'metro'
-                  ? `<span class="metro-badge" style="background: ${step.lineBadge.bgColor || 'var(--accent-amber)'}; color: ${step.lineBadge.textColor || 'var(--accent-amber-text)'}"><span class="metro-circle" style="background: ${step.lineBadge.textColor || 'var(--accent-amber-text)'}; color: ${step.lineBadge.bgColor || 'var(--accent-amber)'}">${step.lineBadge.sublabel || 'M'}</span>${escapeHtml(step.lineBadge.label)}</span>`
+                  ? `<span class="metro-badge" style="background: ${step.lineBadge.bgColor || 'var(--accent-amber)'}; color: ${step.lineBadge.textColor || ((step.lineBadge.bgColor || 'var(--accent-amber)') === '#F5B731' ? '#1B1300' : '#FFFFFF')}"><span class="metro-circle" style="background: ${step.lineBadge.textColor || ((step.lineBadge.bgColor || 'var(--accent-amber)') === '#F5B731' ? '#1B1300' : '#FFFFFF')}; color: ${step.lineBadge.bgColor || 'var(--accent-amber)'}">${step.lineBadge.sublabel || 'M'}</span>${escapeHtml(step.lineBadge.label)}</span>`
                   : step.lineBadge?.type === 'bus'
-                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor || 'var(--accent-blue)'}; color: ${step.lineBadge.textColor || 'var(--accent-blue)'}"><span style="font-size: 13px;">🚌</span> ${escapeHtml(step.lineBadge.label)}</span>`
+                  ? `<span class="bus-badge" style="border-color: ${pillColor}; color: ${pillColor};"><span style="font-size: 13px;">🚌</span> ${escapeHtml(step.lineBadge.label)}</span>`
                   : step.lineBadge?.type === 'tram'
-                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor || 'var(--accent-blue)'}; color: ${step.lineBadge.textColor || 'var(--accent-blue)'}"><span style="font-size: 13px;">🚊</span> ${escapeHtml(step.lineBadge.label)}</span>`
+                  ? `<span class="bus-badge" style="border-color: ${pillColor}; color: ${pillColor};"><span style="font-size: 13px;">🚊</span> ${escapeHtml(step.lineBadge.label)}</span>`
                   : step.lineBadge?.type === 'train'
-                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor || 'var(--accent-blue)'}; color: ${step.lineBadge.textColor || 'var(--accent-blue)'}"><span style="font-size: 13px;">🚆</span> ${escapeHtml(step.lineBadge.label)}</span>`
+                  ? `<span class="bus-badge" style="border-color: ${pillColor}; color: ${pillColor};"><span style="font-size: 13px;">🚆</span> ${escapeHtml(step.lineBadge.label)}</span>`
                   : step.lineBadge?.type === 'walk'
-                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor || 'var(--border-card)'}; color: ${step.lineBadge.textColor || 'var(--text-muted)'}"><span style="font-size: 13px;">🚶</span> ${escapeHtml(step.lineBadge.label || 'Walk')}</span>`
+                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor || 'var(--border-card)'}; color: ${step.lineBadge.borderColor || 'var(--text-muted)'};"><span style="font-size: 13px;">🚶</span> ${escapeHtml(step.lineBadge.label || 'Walk')}</span>`
                   : step.lineBadge?.type === 'ferry'
-                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor || '#5ed3c4'}; color: ${step.lineBadge.textColor || '#5ed3c4'}"><span style="font-size: 13px;">⛴️</span> ${escapeHtml(step.lineBadge.label)}</span>`
+                  ? `<span class="bus-badge" style="border-color: ${pillColor}; color: ${pillColor};"><span style="font-size: 13px;">⛴️</span> ${escapeHtml(step.lineBadge.label)}</span>`
                   : step.lineBadge?.label
-                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor || 'var(--accent-blue)'}; color: ${step.lineBadge.textColor || 'var(--accent-blue)'}">${escapeHtml(step.lineBadge.label)}</span>`
+                  ? `<span class="bus-badge" style="border-color: ${pillColor}; color: ${pillColor};">${escapeHtml(step.lineBadge.label)}</span>`
                   : ''
               }
             </div>
@@ -2868,7 +2869,7 @@ function openEventModal(trip, activeDay, existingItem) {
     venueDurationUnit: initialDurationUnit,
     alertLabel: existingItem?.label || '',
     transportBadge: existingItem?.badgeLabel || getModeDefaultBadge(transportMode),
-    isBadgeCustom: Boolean(existingItem?.badgeLabel && !['Flight', 'Drive', 'Ferry'].includes(existingItem.badgeLabel.trim())),
+    isBadgeCustom: Boolean(existingItem?.badgeLabel && !['Flight', 'Drive', 'Train', 'Ferry'].includes(existingItem.badgeLabel.trim())),
     transportNote: existingItem?.note || '',
     fromLabel: existingItem?.from?.label || '',
     fromTime: existingItem?.from?.time || '',
@@ -2884,7 +2885,6 @@ function openEventModal(trip, activeDay, existingItem) {
   };
 
   const COLOR_PRESETS = [
-    { label: 'Mint', hex: '#5ED3C4', text: '#09090b' },
     { label: 'Gold', hex: '#F5B731', text: '#1B1300' },
     { label: 'Blue', hex: '#6CB8FF', text: '#6CB8FF' },
     { label: 'Green', hex: '#4CC77D', text: '#4CC77D' },
@@ -2919,7 +2919,7 @@ function openEventModal(trip, activeDay, existingItem) {
     if (badgeInp) {
       const val = badgeInp.value.trim();
       formData.transportBadge = badgeInp.value;
-      if (val && !['Flight', 'Drive', 'Ferry'].includes(val)) {
+      if (val && !['Flight', 'Drive', 'Train', 'Ferry'].includes(val)) {
         formData.isBadgeCustom = true;
       }
     }
@@ -2967,7 +2967,7 @@ function openEventModal(trip, activeDay, existingItem) {
             label: labelText,
             sublabel: lineType === 'metro' ? 'M' : undefined,
             bgColor: colorHex,
-            textColor: colorHex === '#F5B731' ? '#1B1300' : '#FFFFFF',
+            textColor: lineType === 'metro' ? (colorHex === '#F5B731' ? '#1B1300' : '#FFFFFF') : colorHex,
             borderColor: colorHex
           };
         }
@@ -3126,78 +3126,78 @@ function openEventModal(trip, activeDay, existingItem) {
             </div>
 
             <div class="form-group">
-              <label class="form-label">Transit Stops & Transfers</label>
-              <div style="display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; padding-right: 4px;">
-                ${formData.transitSteps
-                  .map((step, idx) => {
-                    const isFirst = idx === 0;
-                    const isLast = idx === formData.transitSteps.length - 1;
-                    const badge = step.lineBadge || {};
-                    const stepRole = isFirst ? 'Origin (Stop 1)' : isLast ? `Destination (Stop ${idx + 1})` : `Transfer (Stop ${idx + 1})`;
-                    const roleColor = isFirst ? 'var(--accent-blue)' : isLast ? '#5ed3c4' : 'var(--text-secondary)';
+            <label class="form-label">Transit Stops & Transfers</label>
+            <div style="display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; overflow-x: hidden; padding-right: 4px;">
+              ${formData.transitSteps
+                .map((step, idx) => {
+                  const isFirst = idx === 0;
+                  const isLast = idx === formData.transitSteps.length - 1;
+                  const badge = step.lineBadge || {};
+                  const stepRole = isFirst ? 'Origin (Stop 1)' : isLast ? `Destination (Stop ${idx + 1})` : `Transfer (Stop ${idx + 1})`;
+                  const roleColor = isFirst ? 'var(--accent-blue)' : isLast ? '#5ed3c4' : 'var(--text-secondary)';
 
-                    let cardHtml = `
-                    <div style="padding: 10px; background: var(--bg-canvas); border: 1px solid var(--border-card); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
-                      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                        <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: ${roleColor};">
-                          ${isFirst ? '📍' : isLast ? '🏁' : '🔄'} ${stepRole}
-                        </span>
-                        ${
-                          formData.transitSteps.length > 2
-                            ? `<button type="button" class="card-delete-btn" data-del-step="${idx}">Delete Stop</button>`
-                            : ''
-                        }
+                  let cardHtml = `
+                  <div style="padding: 10px; background: var(--bg-canvas); border: 1px solid var(--border-card); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                      <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: ${roleColor};">
+                        ${isFirst ? '📍' : isLast ? '🏁' : '🔄'} ${stepRole}
+                      </span>
+                      ${
+                        formData.transitSteps.length > 2
+                          ? `<button type="button" class="card-delete-btn" data-del-step="${idx}">Delete Stop</button>`
+                          : ''
+                      }
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px;">
+                      <div class="form-group" style="min-width: 0;">
+                        <label class="form-label" style="font-size: 10.5px;">Stop Name *</label>
+                        <input type="text" class="text-input step-stop-input" data-step-idx="${idx}" placeholder="${isFirst ? 'e.g. Křižíkova' : isLast ? 'e.g. PRG T2' : 'e.g. Zličín'}" value="${escapeHtml(step.stop)}" required style="height: 32px; padding: 4px 8px; font-size: 12px; width: 100%; min-width: 0;" />
                       </div>
+                      <div class="form-group" style="min-width: 0;">
+                        <label class="form-label" style="font-size: 10.5px;">Note</label>
+                        <input type="text" class="text-input step-note-input" data-step-idx="${idx}" placeholder="${isFirst ? 'dep 05:15' : isLast ? 'arr ~06:15' : 'transfer'}" value="${escapeHtml(step.note || '')}" style="height: 32px; padding: 4px 8px; font-size: 12px; width: 100%; min-width: 0;" />
+                      </div>
+                    </div>
+                  </div>
+                  `;
 
-                      <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px;">
-                        <div class="form-group" style="min-width: 0;">
-                          <label class="form-label" style="font-size: 10.5px;">Stop Name *</label>
-                          <input type="text" class="text-input step-stop-input" data-step-idx="${idx}" placeholder="${isFirst ? 'e.g. Křižíkova' : isLast ? 'e.g. PRG T2' : 'e.g. Zličín'}" value="${escapeHtml(step.stop)}" required style="width: 100%; min-width: 0;" />
+                  if (!isLast) {
+                    cardHtml += `
+                    <div style="margin: 2px 0 2px 6px; padding: 6px 6px; border-left: 2px dashed var(--track-connector); display: flex; flex-direction: column; gap: 5px; min-width: 0;">
+                      <span style="font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">
+                        Leg ${idx + 1} Transport (Stop ${idx + 1} ➔ Stop ${idx + 2})
+                      </span>
+                      <div style="display: grid; grid-template-columns: minmax(68px, 1fr) minmax(34px, 0.42fr) minmax(50px, 0.65fr); gap: 4px; align-items: flex-end; min-width: 0;">
+                        <div style="min-width: 0;">
+                          <label class="form-label" style="font-size: 10px; margin-bottom: 2px;">Line Type</label>
+                          <select class="text-input step-line-type" data-step-idx="${idx}" style="padding: 4px 2px 4px 4px; font-size: 11.5px; height: 32px; width: 100%; min-width: 0;">
+                            <option value="metro" ${badge.type === 'metro' ? 'selected' : ''}>Metro</option>
+                            <option value="bus" ${badge.type === 'bus' ? 'selected' : ''}>Bus</option>
+                            <option value="tram" ${badge.type === 'tram' ? 'selected' : ''}>Tram</option>
+                            <option value="train" ${badge.type === 'train' ? 'selected' : ''}>Train</option>
+                            <option value="walk" ${badge.type === 'walk' ? 'selected' : ''}>Walk</option>
+                            <option value="ferry" ${badge.type === 'ferry' ? 'selected' : ''}>Ferry</option>
+                          </select>
                         </div>
-                        <div class="form-group" style="min-width: 0;">
-                          <label class="form-label" style="font-size: 10.5px;">Note</label>
-                          <input type="text" class="text-input step-note-input" data-step-idx="${idx}" placeholder="${isFirst ? 'dep 05:15' : isLast ? 'arr ~06:15' : 'transfer'}" value="${escapeHtml(step.note || '')}" style="width: 100%; min-width: 0;" />
+                        <div style="min-width: 0;">
+                          <label class="form-label" style="font-size: 10px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Line Label">Line Label</label>
+                          <input type="text" class="text-input step-line-label" data-step-idx="${idx}" placeholder="B" value="${escapeHtml(badge.label || '')}" style="height: 32px; padding: 4px 4px; font-size: 11.5px; width: 100%; min-width: 0; text-align: center;" />
+                        </div>
+                        <div style="min-width: 0;">
+                          <label class="form-label" style="font-size: 10px; margin-bottom: 2px;">Color</label>
+                          <select class="text-input step-line-color" data-step-idx="${idx}" style="padding: 4px 2px 4px 4px; font-size: 11px; height: 32px; width: 100%; min-width: 0;">
+                            ${COLOR_PRESETS.map((c) => `<option value="${c.hex}" ${badge.bgColor === c.hex || badge.borderColor === c.hex ? 'selected' : ''}>${c.label}</option>`).join('')}
+                          </select>
                         </div>
                       </div>
                     </div>
                     `;
+                  }
 
-                    if (!isLast) {
-                      cardHtml += `
-                      <div style="margin: 2px 0 2px 8px; padding: 6px 8px; border-left: 2px dashed var(--track-connector); display: flex; flex-direction: column; gap: 6px; min-width: 0;">
-                        <span style="font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">
-                          Leg ${idx + 1} Transport (Stop ${idx + 1} ➔ Stop ${idx + 2})
-                        </span>
-                        <div style="display: grid; grid-template-columns: minmax(78px, 1fr) minmax(50px, 0.65fr) minmax(62px, 0.8fr); gap: 4px; align-items: flex-end; min-width: 0;">
-                          <div style="min-width: 0;">
-                            <label class="form-label" style="font-size: 10px; margin-bottom: 2px;">Line Type</label>
-                            <select class="text-input step-line-type" data-step-idx="${idx}" style="padding: 4px 4px; font-size: 11.5px; height: 32px; width: 100%; min-width: 0;">
-                              <option value="metro" ${badge.type === 'metro' ? 'selected' : ''}>Metro</option>
-                              <option value="bus" ${badge.type === 'bus' ? 'selected' : ''}>Bus</option>
-                              <option value="tram" ${badge.type === 'tram' ? 'selected' : ''}>Tram</option>
-                              <option value="train" ${badge.type === 'train' ? 'selected' : ''}>Train</option>
-                              <option value="walk" ${badge.type === 'walk' ? 'selected' : ''}>Walk</option>
-                              <option value="ferry" ${badge.type === 'ferry' ? 'selected' : ''}>Ferry</option>
-                            </select>
-                          </div>
-                          <div style="min-width: 0;">
-                            <label class="form-label" style="font-size: 10px; margin-bottom: 2px;">Line Label</label>
-                            <input type="text" class="text-input step-line-label" data-step-idx="${idx}" placeholder="e.g. B" value="${escapeHtml(badge.label || '')}" style="height: 32px; padding: 4px 6px; font-size: 11.5px; width: 100%; min-width: 0;" />
-                          </div>
-                          <div style="min-width: 0;">
-                            <label class="form-label" style="font-size: 10px; margin-bottom: 2px;">Color</label>
-                            <select class="text-input step-line-color" data-step-idx="${idx}" style="padding: 4px 4px; font-size: 11.5px; height: 32px; width: 100%; min-width: 0;">
-                              ${COLOR_PRESETS.map((c) => `<option value="${c.hex}" ${badge.bgColor === c.hex || badge.borderColor === c.hex ? 'selected' : ''}>${c.label}</option>`).join('')}
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                      `;
-                    }
-
-                    return cardHtml;
-                  })
-                  .join('')}
+                  return cardHtml;
+                })
+                .join('')}
               </div>
               <button type="button" class="btn-secondary" id="addTransitLegBtn" style="align-self: flex-start; margin-top: 4px; font-size: 11px;">+ Add Next Stop & Transfer</button>
             </div>
@@ -3295,7 +3295,7 @@ function openEventModal(trip, activeDay, existingItem) {
       btn.addEventListener('click', () => {
         syncDomToFormData();
         currentType = btn.getAttribute('data-type');
-        if (currentType === 'transport' && (!formData.isBadgeCustom || !formData.transportBadge || ['Flight', 'Drive', 'Ferry'].includes(formData.transportBadge.trim()))) {
+        if (currentType === 'transport' && (!formData.isBadgeCustom || !formData.transportBadge || ['Flight', 'Drive', 'Train', 'Ferry'].includes(formData.transportBadge.trim()))) {
           formData.transportBadge = getModeDefaultBadge(transportMode);
         }
         renderModal();
@@ -3307,7 +3307,7 @@ function openEventModal(trip, activeDay, existingItem) {
         syncDomToFormData();
         const newMode = btn.getAttribute('data-mode');
         transportMode = newMode;
-        if (!formData.isBadgeCustom || !formData.transportBadge || ['Flight', 'Drive', 'Ferry'].includes(formData.transportBadge.trim())) {
+        if (!formData.isBadgeCustom || !formData.transportBadge || ['Flight', 'Drive', 'Train', 'Ferry'].includes(formData.transportBadge.trim())) {
           formData.transportBadge = getModeDefaultBadge(newMode);
           formData.isBadgeCustom = false;
         }
