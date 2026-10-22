@@ -1523,7 +1523,7 @@ function openNewTripModal() {
       <form id="newTripForm" style="display: flex; flex-direction: column; gap: 14px;">
         <div class="form-group">
           <label class="form-label" for="newTripTitle">Vacation Title</label>
-          <input class="text-input" id="newTripTitle" placeholder="e.g. Scottish Highlands & Islay" required autofocus />
+          <input class="text-input" id="newTripTitle" required autofocus />
         </div>
 
         <div class="form-group">
@@ -1812,8 +1812,8 @@ function openDayTitleModal(trip, activeDay) {
 
       <form id="dayTitleForm" style="display: flex; flex-direction: column; gap: 14px;">
         <div class="form-group">
-          <label class="form-label" for="dayTitleInput">Day Description / Route</label>
-          <input class="text-input" id="dayTitleInput" placeholder="e.g. Prague ➔ Islay, Islay Distilleries" value="${escapeHtml(currentVal)}" autofocus />
+          <label class="form-label" for="dayTitleInput">Day Description ➔ </label>
+          <input class="text-input" id="dayTitleInput" placeholder="e.g. PRG ➔ EDI" value="${escapeHtml(currentVal)}" autofocus />
         </div>
 
         <div class="dialog-actions">
@@ -3021,13 +3021,13 @@ function openEventModal(trip, activeDay, existingItem) {
             <!-- 2. Title below time -->
             <div class="form-group">
               <label class="form-label" for="venueTitle">Title / Venue *</label>
-              <input class="text-input" id="venueTitle" required placeholder="e.g. Kilchoman" value="${escapeHtml(formData.venueTitle)}" autofocus />
+              <input class="text-input" id="venueTitle" required value="${escapeHtml(formData.venueTitle)}" autofocus />
             </div>
 
             <!-- 3. Note / Subtitle -->
             <div class="form-group">
-              <label class="form-label" for="venueSubtitle">Note / Subtitle (optional)</label>
-              <input class="text-input" id="venueSubtitle" placeholder="e.g. visit & brunch" value="${escapeHtml(formData.venueSubtitle)}" />
+              <label class="form-label" for="venueSubtitle">Note</label>
+              <input class="text-input" id="venueSubtitle" value="${escapeHtml(formData.venueSubtitle)}" />
             </div>
 
             <!-- 5. Icon Picker -->
@@ -3058,13 +3058,13 @@ function openEventModal(trip, activeDay, existingItem) {
               : currentType === 'alert'
               ? `
             <div class="form-group">
-              <label class="form-label" for="eventTime">Time * (Mandatory)</label>
-              <input class="text-input" id="eventTime" required placeholder="05:00" value="${escapeHtml(formData.time)}" autofocus />
+              <label class="form-label" for="eventTime">Time *</label>
+              <input class="text-input" id="eventTime" required value="${escapeHtml(formData.time)}" autofocus />
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="alertLabel">Alert / Deadline Message * (Mandatory)</label>
-              <input class="text-input" id="alertLabel" required placeholder="e.g. departure from hotel" value="${escapeHtml(formData.alertLabel)}" />
+              <label class="form-label" for="alertLabel">Alert / Deadline Message *</label>
+              <input class="text-input" id="alertLabel" required value="${escapeHtml(formData.alertLabel)}" />
             </div>
           `
               : currentType === 'transport'
@@ -3072,7 +3072,7 @@ function openEventModal(trip, activeDay, existingItem) {
             <!-- Scheduled Time -->
             <div class="form-group">
               <label class="form-label" for="eventTime">Departure Time (optional)</label>
-              <input class="text-input" id="eventTime" placeholder="08:00" value="${escapeHtml(formData.time)}" />
+              <input class="text-input" id="eventTime" value="${escapeHtml(formData.time)}" />
             </div>
 
             <div class="form-group">
@@ -3091,29 +3091,29 @@ function openEventModal(trip, activeDay, existingItem) {
                 <input class="text-input" id="transportBadge" required placeholder="${transportMode === 'flight' ? 'Flight · FR1014' : transportMode === 'ferry' ? 'Ferry' : transportMode === 'train' ? 'Train · IC 502' : 'Drive'}" value="${escapeHtml(formData.transportBadge || getModeDefaultBadge(transportMode))}" style="width: 100%; min-width: 0;" />
               </div>
               <div class="form-group" style="min-width: 0;">
-                <label class="form-label" for="transportNote">Note (optional)</label>
-                <input class="text-input" id="transportNote" placeholder="e.g. 2h" value="${escapeHtml(formData.transportNote)}" style="width: 100%; min-width: 0;" />
+                <label class="form-label" for="transportNote">Note</label>
+                <input class="text-input" id="transportNote" value="${escapeHtml(formData.transportNote)}" style="width: 100%; min-width: 0;" />
               </div>
             </div>
 
             <div style="display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr); gap: 8px;">
               <div class="form-group" style="min-width: 0;">
-                <label class="form-label" for="fromLabel">Origin (From) *</label>
-                <input class="text-input" id="fromLabel" required placeholder="e.g. PRG" value="${escapeHtml(formData.fromLabel)}" style="width: 100%; min-width: 0;" />
+                <label class="form-label" for="fromLabel">From *</label>
+                <input class="text-input" id="fromLabel" required value="${escapeHtml(formData.fromLabel)}" style="width: 100%; min-width: 0;" />
               </div>
               <div class="form-group" style="min-width: 0;">
-                <label class="form-label" for="fromTime">Origin Time</label>
-                <input class="text-input" id="fromTime" placeholder="08:00" value="${escapeHtml(formData.fromTime)}" style="width: 100%; min-width: 0;" />
+                <label class="form-label" for="fromTime">Departure Time</label>
+                <input class="text-input" id="fromTime" value="${escapeHtml(formData.fromTime)}" style="width: 100%; min-width: 0;" />
               </div>
             </div>
 
             <div style="display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr); gap: 8px;">
               <div class="form-group" style="min-width: 0;">
-                <label class="form-label" for="toLabel">Destination (To) *</label>
-                <input class="text-input" id="toLabel" required placeholder="e.g. EDI" value="${escapeHtml(formData.toLabel)}" style="width: 100%; min-width: 0;" />
+                <label class="form-label" for="toLabel">To *</label>
+                <input class="text-input" id="toLabel" required value="${escapeHtml(formData.toLabel)}" style="width: 100%; min-width: 0;" />
               </div>
               <div class="form-group" style="min-width: 0;">
-                <label class="form-label" for="toTime">Destination Time</label>
+                <label class="form-label" for="toTime">Arrival Time</label>
                 <input class="text-input" id="toTime" placeholder="10:00" value="${escapeHtml(formData.toTime)}" style="width: 100%; min-width: 0;" />
               </div>
             </div>
@@ -3122,7 +3122,7 @@ function openEventModal(trip, activeDay, existingItem) {
             <!-- Multi-leg Transit -->
             <div class="form-group">
               <label class="form-label" for="eventTime">Departure Time (optional)</label>
-              <input class="text-input" id="eventTime" placeholder="05:15" value="${escapeHtml(formData.time)}" />
+              <input class="text-input" id="eventTime" value="${escapeHtml(formData.time)}" />
             </div>
 
             <div class="form-group">
@@ -3152,11 +3152,11 @@ function openEventModal(trip, activeDay, existingItem) {
                     <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px;">
                       <div class="form-group" style="min-width: 0;">
                         <label class="form-label" style="font-size: 10.5px;">Stop Name *</label>
-                        <input type="text" class="text-input step-stop-input" data-step-idx="${idx}" placeholder="${isFirst ? 'e.g. Křižíkova' : isLast ? 'e.g. PRG T2' : 'e.g. Zličín'}" value="${escapeHtml(step.stop)}" required style="height: 32px; padding: 4px 8px; font-size: 12px; width: 100%; min-width: 0;" />
+                        <input type="text" class="text-input step-stop-input" data-step-idx="${idx}" value="${escapeHtml(step.stop)}" required style="height: 32px; padding: 4px 8px; font-size: 12px; width: 100%; min-width: 0;" />
                       </div>
                       <div class="form-group" style="min-width: 0;">
                         <label class="form-label" style="font-size: 10.5px;">Note</label>
-                        <input type="text" class="text-input step-note-input" data-step-idx="${idx}" placeholder="${isFirst ? 'dep 05:15' : isLast ? 'arr ~06:15' : 'transfer'}" value="${escapeHtml(step.note || '')}" style="height: 32px; padding: 4px 8px; font-size: 12px; width: 100%; min-width: 0;" />
+                        <input type="text" class="text-input step-note-input" data-step-idx="${idx}" value="${escapeHtml(step.note || '')}" style="height: 32px; padding: 4px 8px; font-size: 12px; width: 100%; min-width: 0;" />
                       </div>
                     </div>
                   </div>
@@ -3182,7 +3182,7 @@ function openEventModal(trip, activeDay, existingItem) {
                         </div>
                         <div style="min-width: 0;">
                           <label class="form-label" style="font-size: 10px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Line Label">Line Label</label>
-                          <input type="text" class="text-input step-line-label" data-step-idx="${idx}" placeholder="B" value="${escapeHtml(badge.label || '')}" style="height: 32px; padding: 4px 4px; font-size: 11.5px; width: 100%; min-width: 0; text-align: center;" />
+                          <input type="text" class="text-input step-line-label" data-step-idx="${idx}" value="${escapeHtml(badge.label || '')}" style="height: 32px; padding: 4px 4px; font-size: 11.5px; width: 100%; min-width: 0; text-align: center;" />
                         </div>
                         <div style="min-width: 0;">
                           <label class="form-label" style="font-size: 10px; margin-bottom: 2px;">Color</label>
@@ -3462,7 +3462,7 @@ function openIdeaModal(trip, existingIdea) {
       <form id="ideaForm" style="display: flex; flex-direction: column; gap: 14px;">
         <div class="form-group">
           <label class="form-label" for="ideaTitle">Idea / Candidate Title *</label>
-          <input class="text-input" id="ideaTitle" required placeholder="e.g. Visit Bowmore" value="${escapeHtml(existingIdea?.title || '')}" autofocus />
+          <input class="text-input" id="ideaTitle" required value="${escapeHtml(existingIdea?.title || '')}" autofocus />
         </div>
 
         <div class="form-group">
