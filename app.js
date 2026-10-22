@@ -2989,8 +2989,8 @@ function openEventModal(trip, activeDay, existingItem) {
     transitSteps: existingItem?.steps
       ? JSON.parse(JSON.stringify(existingItem.steps))
       : [
-          { stop: '', lineBadge: { type: 'metro', label: 'B', bgColor: '#F5B731', textColor: '#1B1300' }, note: '' },
-          { stop: '', lineBadge: { type: 'bus', label: '#100', borderColor: '#6CB8FF', textColor: '#6CB8FF' }, note: '' },
+          { stop: '', lineBadge: { type: 'metro', bgColor: '#F5B731', textColor: '#1B1300' }, note: '' },
+          { stop: '', lineBadge: { type: 'bus', borderColor: '#6CB8FF', textColor: '#6CB8FF' }, note: '' },
           { stop: '', note: '' }
         ]
   };
