@@ -2226,6 +2226,24 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
   ctx.closePath();
 }
 
+function getItemDisplayTitleAndNote(item) {
+  if (!item) return { title: '', note: '' };
+  if (item.type === 'alert') {
+    return { title: item.label || 'Alert', note: '' };
+  }
+  if (item.type === 'transport') {
+    const route = `${item.from?.label || ''} ➔ ${item.to?.label || ''}`;
+    const badge = item.badgeLabel ? `${item.badgeLabel}: ` : '';
+    return { title: `${badge}${route}`, note: item.note || '' };
+  }
+  if (item.type === 'transit_chain') {
+    const stops = (item.steps || []).map((s) => s.stop).filter(Boolean).join(' ➔ ');
+    return { title: stops || 'Transit Chain', note: '' };
+  }
+  // venue / activity
+  return { title: item.title || '', note: item.subtitle || '' };
+}
+
 function getFormattedItineraryText(trip, dayNumber) {
   if (dayNumber) {
     const day = trip.days.find((d) => d.dayNumber === dayNumber) || trip.days[0];
@@ -2245,7 +2263,11 @@ function getFormattedItineraryText(trip, dayNumber) {
     } else {
       day.items.forEach((item) => {
         const timePart = item.time ? `${item.time} — ` : '';
-        lines.push(`• ${timePart}${item.title}`);
+        const { title, note } = getItemDisplayTitleAndNote(item);
+        lines.push(`• ${timePart}${title}`);
+        if (note) {
+          lines.push(`    (${note})`);
+        }
       });
     }
     return lines.join('\n');
@@ -2269,7 +2291,11 @@ function getFormattedItineraryText(trip, dayNumber) {
     } else {
       day.items.forEach((item) => {
         const timePart = item.time ? `${item.time} — ` : '';
-        lines.push(`  • ${timePart}${item.title}`);
+        const { title, note } = getItemDisplayTitleAndNote(item);
+        lines.push(`  • ${timePart}${title}`);
+        if (note) {
+          lines.push(`      (${note})`);
+        }
       });
     }
     lines.push('');
@@ -2292,8 +2318,16 @@ function renderItineraryCanvas(trip, dayNumber) {
   let estimatedHeight = 150;
   targetDays.forEach((d) => {
     if (!isSingleDay) estimatedHeight += 44;
-    const count = d.items && d.items.length > 0 ? d.items.length : 1;
-    estimatedHeight += count * 42 + 16;
+    let itemsH = 0;
+    if (d.items && d.items.length > 0) {
+      d.items.forEach((item) => {
+        const { note } = getItemDisplayTitleAndNote(item);
+        itemsH += note ? 52 : 38;
+      });
+    } else {
+      itemsH = 36;
+    }
+    estimatedHeight += itemsH + 16;
   });
   estimatedHeight += 60;
   const height = Math.max(isSingleDay ? 360 : 420, estimatedHeight);
@@ -2368,10 +2402,14 @@ function renderItineraryCanvas(trip, dayNumber) {
         const textX = dotX + 18;
         const timeX = 36;
 
+        const { title, note } = getItemDisplayTitleAndNote(item);
+        const hasNote = Boolean(note);
+        const rowHeight = hasNote ? 52 : 38;
+
         if (idx < items.length - 1) {
           ctx.beginPath();
           ctx.moveTo(dotX, curY);
-          ctx.lineTo(dotX, curY + 38);
+          ctx.lineTo(dotX, curY + rowHeight);
           ctx.strokeStyle = '#27272a';
           ctx.lineWidth = 2;
           ctx.stroke();
@@ -2380,7 +2418,7 @@ function renderItineraryCanvas(trip, dayNumber) {
         // Time
         if (item.time) {
           ctx.font = '600 12px "IBM Plex Mono", monospace';
-          ctx.fillStyle = '#5ED3C4';
+          ctx.fillStyle = item.type === 'alert' ? '#FF6B5E' : '#5ED3C4';
           ctx.fillText(item.time, timeX, curY + 4);
         } else {
           ctx.font = '500 12px "IBM Plex Mono", monospace';
@@ -2391,20 +2429,31 @@ function renderItineraryCanvas(trip, dayNumber) {
         // Dot
         ctx.beginPath();
         ctx.arc(dotX, curY, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#5ED3C4';
+        ctx.fillStyle = item.type === 'alert' ? '#FF6B5E' : '#5ED3C4';
         ctx.fill();
 
         // Title
         ctx.font = '600 14px "IBM Plex Sans", -apple-system, sans-serif';
         ctx.fillStyle = '#ffffff';
         const maxW = width - 36 - textX;
-        let t = item.title || '';
+        let t = title || '';
         while (ctx.measureText(t).width > maxW && t.length > 3) {
           t = t.slice(0, -4) + '...';
         }
         ctx.fillText(t, textX, curY + 4);
 
-        curY += 38;
+        // Subtitle / Note
+        if (hasNote) {
+          ctx.font = '400 12px "IBM Plex Sans", -apple-system, sans-serif';
+          ctx.fillStyle = '#a1a1aa';
+          let n = note;
+          while (ctx.measureText(n).width > maxW && n.length > 3) {
+            n = n.slice(0, -4) + '...';
+          }
+          ctx.fillText(n, textX, curY + 22);
+        }
+
+        curY += rowHeight;
       });
       curY += 12;
     }
