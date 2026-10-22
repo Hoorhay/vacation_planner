@@ -1615,3 +1615,16 @@ button:focus-visible {
   background: rgba(56, 189, 248, 0.08);
 }
 
+/* Activity End Time & Duration Grid */
+.activity-time-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .activity-time-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

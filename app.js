@@ -2665,6 +2665,51 @@ function openShareModal(trip, initialDayNumber) {
   });
 }
 
+function timeToMinutes(t) {
+  if (!t) return null;
+  const m = String(t).match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
+function minutesToTime(min) {
+  if (min === null || min === undefined || isNaN(min)) return '';
+  let total = Math.round(min) % (24 * 60);
+  if (total < 0) total += 24 * 60;
+  const h = String(Math.floor(total / 60)).padStart(2, '0');
+  const m = String(total % 60).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+function calculateDurationFromTimes(startStr, endStr) {
+  const s = timeToMinutes(startStr);
+  const e = timeToMinutes(endStr);
+  if (s === null || e === null) return null;
+  let diff = e - s;
+  if (diff <= 0) diff += 24 * 60;
+
+  if (diff % 60 === 0) {
+    return { val: String(diff / 60), unit: 'hours' };
+  }
+  if (diff % 30 === 0 && diff >= 60) {
+    return { val: String(diff / 60), unit: 'hours' };
+  }
+  if (diff < 60) {
+    return { val: String(diff), unit: 'minutes' };
+  }
+  if (diff % 15 === 0) {
+    return { val: String(diff / 60), unit: 'hours' };
+  }
+  return { val: String(diff), unit: 'minutes' };
+}
+
+function calculateEndTimeFromDuration(startStr, val, unit) {
+  const s = timeToMinutes(startStr);
+  if (s === null || isNaN(val) || val <= 0) return '';
+  const addMin = unit === 'hours' ? Math.round(val * 60) : Math.round(val);
+  return minutesToTime(s + addMin);
+}
+
 function parseDurationToMinutes(text) {
   if (!text) return null;
   const str = String(text).toLowerCase().trim();
@@ -2823,12 +2868,54 @@ function openEventModal(trip, activeDay, existingItem) {
   let selectedIcon = existingItem ? (existingItem.icon || 'pin') : 'pin';
   let transportMode = existingItem && existingItem.type === 'transport' ? (existingItem.mode || 'flight') : 'flight';
 
+  let initialEndTime = existingItem?.endTime || '';
+  let initialDurationVal = existingItem?.durationVal || '';
+  let initialDurationUnit = existingItem?.durationUnit || 'hours';
+
+  if (!initialEndTime && existingItem?.timeWindow) {
+    const range = existingItem.timeWindow.match(/(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})/);
+    if (range) {
+      initialEndTime = range[2];
+    } else {
+      const untilMatch = existingItem.timeWindow.match(/^until\s*(\d{1,2}:\d{2})$/i);
+      if (untilMatch) initialEndTime = untilMatch[1];
+    }
+  }
+
+  if (!initialDurationVal && existingItem?.timeWindow) {
+    const hrMatch = existingItem.timeWindow.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/i);
+    const minMatch = existingItem.timeWindow.match(/(\d+)\s*(?:minutes?|mins?|m)\b/i);
+    if (hrMatch) {
+      initialDurationVal = hrMatch[1];
+      initialDurationUnit = 'hours';
+    } else if (minMatch) {
+      initialDurationVal = minMatch[1];
+      initialDurationUnit = 'minutes';
+    }
+  }
+
+  const existingStartTime = existingItem ? (existingItem.time || '') : '';
+  if (existingStartTime && initialEndTime && !initialDurationVal) {
+    const dur = calculateDurationFromTimes(existingStartTime, initialEndTime);
+    if (dur) {
+      initialDurationVal = dur.val;
+      initialDurationUnit = dur.unit;
+    }
+  } else if (existingStartTime && initialDurationVal && !initialEndTime) {
+    const num = parseFloat(initialDurationVal);
+    if (!isNaN(num) && num > 0) {
+      initialEndTime = calculateEndTimeFromDuration(existingStartTime, num, initialDurationUnit);
+    }
+  }
+
   // Persistent in-memory form state so nothing is lost when toggling tabs or adding/removing stops
   const formData = {
-    time: existingItem ? (existingItem.time || '') : '',
+    time: existingStartTime,
     venueTitle: existingItem?.title || '',
     venueSubtitle: existingItem?.subtitle || '',
-    venueTimeWindow: existingItem?.timeWindow || '',
+    venueEndTime: initialEndTime,
+    venueDurationVal: initialDurationVal,
+    venueDurationUnit: initialDurationUnit,
     alertLabel: existingItem?.label || '',
     transportBadge: existingItem?.badgeLabel || '',
     transportNote: existingItem?.note || '',
@@ -2864,8 +2951,14 @@ function openEventModal(trip, activeDay, existingItem) {
     const subInp = modal.querySelector('#venueSubtitle');
     if (subInp) formData.venueSubtitle = subInp.value;
 
-    const twInp = modal.querySelector('#venueTimeWindow');
-    if (twInp) formData.venueTimeWindow = twInp.value;
+    const endTmInp = modal.querySelector('#venueEndTime');
+    if (endTmInp) formData.venueEndTime = endTmInp.value;
+
+    const durValInp = modal.querySelector('#venueDurationVal');
+    if (durValInp) formData.venueDurationVal = durValInp.value;
+
+    const durUnitSel = modal.querySelector('#venueDurationUnit');
+    if (durUnitSel) formData.venueDurationUnit = durUnitSel.value;
 
     const alertInp = modal.querySelector('#alertLabel');
     if (alertInp) formData.alertLabel = alertInp.value;
@@ -2943,9 +3036,9 @@ function openEventModal(trip, activeDay, existingItem) {
           ${
             currentType === 'venue'
               ? `
-            <!-- 1. Time on top for consistency with other events -->
+            <!-- 1. Start Time on top for consistency with other events -->
             <div class="form-group">
-              <label class="form-label" for="eventTime">Time (optional)</label>
+              <label class="form-label" for="eventTime">Start Time (optional)</label>
               <input class="text-input" id="eventTime" placeholder="e.g. 09:30 or 11:15" value="${escapeHtml(formData.time)}" />
             </div>
 
@@ -2961,17 +3054,22 @@ function openEventModal(trip, activeDay, existingItem) {
               <input class="text-input" id="venueSubtitle" placeholder="e.g. visit and brunch, SIXT reservation 12345" value="${escapeHtml(formData.venueSubtitle)}" />
             </div>
 
-            <!-- 4. Duration / Time Window -->
-            <div class="form-group">
-              <label class="form-label" for="venueTimeWindow">Duration or Time Window (optional)</label>
-              <input class="text-input" id="venueTimeWindow" placeholder="e.g. 2 hours, 90 mins, or 11:15–13:30" value="${escapeHtml(formData.venueTimeWindow)}" />
-              <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; align-items: center;">
-                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">Quick duration:</span>
-                <button type="button" class="duration-chip-btn" data-duration="30 min">30 min</button>
-                <button type="button" class="duration-chip-btn" data-duration="1 hour">1 hour</button>
-                <button type="button" class="duration-chip-btn" data-duration="1.5 hours">1.5 hours</button>
-                <button type="button" class="duration-chip-btn" data-duration="2 hours">2 hours</button>
-                <button type="button" class="duration-chip-btn" data-duration="3 hours">3 hours</button>
+            <!-- 4. End Time & Duration (Split with two-way calculation) -->
+            <div class="activity-time-grid">
+              <div class="form-group">
+                <label class="form-label" for="venueEndTime">End Time (optional)</label>
+                <input class="text-input" id="venueEndTime" placeholder="e.g. 11:30" value="${escapeHtml(formData.venueEndTime)}" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="venueDurationVal">Duration (optional)</label>
+                <div style="display: flex; gap: 6px;">
+                  <input type="number" step="any" min="0" class="text-input" id="venueDurationVal" placeholder="e.g. 2" value="${escapeHtml(formData.venueDurationVal)}" style="flex: 1;" />
+                  <select class="text-input" id="venueDurationUnit" style="width: 105px; padding: 4px 8px; font-size: 13px;">
+                    <option value="hours" ${formData.venueDurationUnit === 'hours' ? 'selected' : ''}>hours</option>
+                    <option value="minutes" ${formData.venueDurationUnit === 'minutes' ? 'selected' : ''}>minutes</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -3166,21 +3264,73 @@ function openEventModal(trip, activeDay, existingItem) {
 
   function attachModalHandlers() {
     attachTimeMask(modal.querySelector('#eventTime'));
+    attachTimeMask(modal.querySelector('#venueEndTime'));
     attachTimeMask(modal.querySelector('#fromTime'));
     attachTimeMask(modal.querySelector('#toTime'));
 
     modal.querySelector('#cancelEventModalBtn').addEventListener('click', () => modal.remove());
     modal.querySelector('#cancelEventFormBtn').addEventListener('click', () => modal.remove());
 
-    modal.querySelectorAll('.duration-chip-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const dur = btn.getAttribute('data-duration');
-        const twInp = modal.querySelector('#venueTimeWindow');
-        if (twInp) {
-          twInp.value = dur;
-          formData.venueTimeWindow = dur;
+    const startTimeInp = modal.querySelector('#eventTime');
+    const endTimeInp = modal.querySelector('#venueEndTime');
+    const durValInp = modal.querySelector('#venueDurationVal');
+    const durUnitSel = modal.querySelector('#venueDurationUnit');
+
+    let isSyncing = false;
+
+    const updateFromEndTime = () => {
+      if (isSyncing) return;
+      isSyncing = true;
+      const start = startTimeInp ? startTimeInp.value.trim() : '';
+      const end = endTimeInp ? endTimeInp.value.trim() : '';
+      formData.venueEndTime = end;
+      if (start && end) {
+        const dur = calculateDurationFromTimes(start, end);
+        if (dur) {
+          if (durValInp) durValInp.value = dur.val;
+          if (durUnitSel) durUnitSel.value = dur.unit;
+          formData.venueDurationVal = dur.val;
+          formData.venueDurationUnit = dur.unit;
         }
-      });
+      }
+      isSyncing = false;
+    };
+
+    const updateFromDuration = () => {
+      if (isSyncing) return;
+      isSyncing = true;
+      const start = startTimeInp ? startTimeInp.value.trim() : '';
+      const val = durValInp ? parseFloat(durValInp.value) : NaN;
+      const unit = durUnitSel ? durUnitSel.value : 'hours';
+      formData.venueDurationVal = durValInp ? durValInp.value : '';
+      formData.venueDurationUnit = unit;
+      if (start && !isNaN(val) && val > 0) {
+        const end = calculateEndTimeFromDuration(start, val, unit);
+        if (end) {
+          if (endTimeInp) endTimeInp.value = end;
+          formData.venueEndTime = end;
+        }
+      }
+      isSyncing = false;
+    };
+
+    endTimeInp?.addEventListener('input', updateFromEndTime);
+    endTimeInp?.addEventListener('change', updateFromEndTime);
+
+    durValInp?.addEventListener('input', updateFromDuration);
+    durValInp?.addEventListener('change', updateFromDuration);
+    durUnitSel?.addEventListener('change', updateFromDuration);
+
+    startTimeInp?.addEventListener('input', () => {
+      formData.time = startTimeInp.value;
+      if (currentType === 'venue') {
+        const val = durValInp ? parseFloat(durValInp.value) : NaN;
+        if (!isNaN(val) && val > 0) {
+          updateFromDuration();
+        } else if (endTimeInp && endTimeInp.value.trim()) {
+          updateFromEndTime();
+        }
+      }
     });
 
     modal.querySelectorAll('.event-type-btn[data-type]').forEach((btn) => {
@@ -3244,7 +3394,34 @@ function openEventModal(trip, activeDay, existingItem) {
         newItem.type = 'venue';
         newItem.title = formData.venueTitle.trim();
         newItem.subtitle = formData.venueSubtitle.trim() || undefined;
-        newItem.timeWindow = formData.venueTimeWindow.trim() || undefined;
+
+        const start = formData.time.trim();
+        const end = (formData.venueEndTime || '').trim();
+        const durVal = (formData.venueDurationVal || '').trim();
+        const durUnit = formData.venueDurationUnit || 'hours';
+
+        newItem.endTime = end || undefined;
+        newItem.durationVal = durVal || undefined;
+        newItem.durationUnit = durUnit || undefined;
+
+        if (start && end) {
+          newItem.timeWindow = `${start}–${end}`;
+        } else if (start && durVal) {
+          const num = parseFloat(durVal);
+          if (!isNaN(num) && num > 0) {
+            const calcEnd = calculateEndTimeFromDuration(start, num, durUnit);
+            newItem.timeWindow = `${start}–${calcEnd}`;
+          } else {
+            newItem.timeWindow = `${durVal} ${durUnit}`;
+          }
+        } else if (durVal) {
+          newItem.timeWindow = `${durVal} ${durUnit}`;
+        } else if (end) {
+          newItem.timeWindow = `until ${end}`;
+        } else {
+          newItem.timeWindow = undefined;
+        }
+
         newItem.icon = selectedIcon;
       } else if (currentType === 'alert') {
         const alertLabel = formData.alertLabel.trim();
