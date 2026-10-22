@@ -3494,20 +3494,17 @@ function openIdeaModal(trip, existingIdea) {
 
         <div class="form-group">
           <label class="form-label">Applicable Days (Dates & Weekdays)</label>
-          <div style="display: flex; flex-direction: column; gap: 6px; max-height: 150px; overflow-y: auto; padding: 4px 0;">
+          <div class="idea-days-grid">
             ${trip.days
               .map((d) => {
                 const date = getDateForDay(trip.startDate, d.dayNumber);
-                const dayName = WEEKDAYS_SHORT[date.getDay()];
                 const shortDate = formatShortDate(date);
                 const checked = applicableDays.length === 0 || applicableDays.includes(d.dayNumber);
                 return `
-              <label style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: 6px; background: var(--bg-canvas); border: 1px solid var(--border-card); font-family: var(--font-mono); font-size: 11.5px; cursor: pointer;">
-                <span style="display: flex; align-items: center; gap: 6px;">
-                  <input type="checkbox" class="day-checkbox" value="${d.dayNumber}" ${checked ? 'checked' : ''} />
-                  <strong>Day ${d.dayNumber}</strong> · ${escapeHtml(d.routeTitle || '')}
-                </span>
-                <span style="color: var(--accent-blue);">${dayName} ${shortDate}</span>
+              <label class="idea-day-pill ${checked ? 'active' : ''}">
+                <input type="checkbox" class="day-checkbox" value="${d.dayNumber}" ${checked ? 'checked' : ''} style="display: none;" />
+                <span class="day-tab-num">Day ${d.dayNumber}</span>
+                <span class="day-tab-date" style="font-size: 10.5px;">${shortDate}</span>
               </label>
             `;
               })
@@ -3542,6 +3539,15 @@ function openIdeaModal(trip, existingIdea) {
 
   document.body.appendChild(modal);
   attachTimeRangeMask(modal.querySelector('#ideaTimeRange'));
+
+  modal.querySelectorAll('.day-checkbox').forEach((cb) => {
+    cb.addEventListener('change', () => {
+      const pill = cb.closest('.idea-day-pill');
+      if (pill) {
+        pill.classList.toggle('active', cb.checked);
+      }
+    });
+  });
 
   modal.querySelector('#cancelIdeaModalBtn').addEventListener('click', () => modal.remove());
   modal.querySelector('#cancelIdeaFormBtn').addEventListener('click', () => modal.remove());
