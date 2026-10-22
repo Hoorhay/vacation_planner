@@ -1,12 +1,15 @@
 // sw.js - Service Worker for Vacation Planner
-const CACHE_NAME = 'vacation-planner-v10';
+const CACHE_NAME = 'vacation-planner-v3';
 
 const CORE_ASSETS = [
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
-  './assets/favicon.svg'
+  './assets/favicon.svg',
+  './assets/apple-touch-icon.png',
+  './assets/web-app-manifest-192x192.png',
+  './assets/web-app-manifest-512x512.png'
 ];
 
 self.addEventListener('install', (event) => {
