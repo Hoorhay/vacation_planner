@@ -1615,16 +1615,27 @@ button:focus-visible {
   background: rgba(56, 189, 248, 0.08);
 }
 
-/* Activity End Time & Duration Grid */
-.activity-time-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.3fr;
-  gap: 10px;
+/* Compact Time & Duration Controls */
+.time-duration-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-@media (max-width: 480px) {
-  .activity-time-grid {
-    grid-template-columns: 1fr;
-  }
+.time-input-compact {
+  width: 85px !important;
+  text-align: center;
+}
+
+.duration-val-compact {
+  width: 60px !important;
+  text-align: center;
+}
+
+.duration-unit-compact {
+  width: 92px !important;
+  padding: 10px 8px !important;
+  font-size: 13px !important;
 }
 

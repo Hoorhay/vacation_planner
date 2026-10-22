@@ -3036,10 +3036,28 @@ function openEventModal(trip, activeDay, existingItem) {
           ${
             currentType === 'venue'
               ? `
-            <!-- 1. Start Time on top for consistency with other events -->
-            <div class="form-group">
-              <label class="form-label" for="eventTime">Start Time (optional)</label>
-              <input class="text-input" id="eventTime" placeholder="e.g. 09:30 or 11:15" value="${escapeHtml(formData.time)}" />
+            <!-- 1. Compact Time & Duration Row on top -->
+            <div class="time-duration-row">
+              <div class="form-group" style="width: auto;">
+                <label class="form-label" for="eventTime" style="white-space: nowrap;">Start Time</label>
+                <input class="text-input time-input-compact" id="eventTime" placeholder="09:30" value="${escapeHtml(formData.time)}" />
+              </div>
+
+              <div class="form-group" style="width: auto;">
+                <label class="form-label" for="venueEndTime" style="white-space: nowrap;">End Time</label>
+                <input class="text-input time-input-compact" id="venueEndTime" placeholder="11:30" value="${escapeHtml(formData.venueEndTime)}" />
+              </div>
+
+              <div class="form-group" style="width: auto;">
+                <label class="form-label" for="venueDurationVal" style="white-space: nowrap;">Duration</label>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <input type="number" step="any" min="0" class="text-input duration-val-compact" id="venueDurationVal" placeholder="2" value="${escapeHtml(formData.venueDurationVal)}" />
+                  <select class="text-input duration-unit-compact" id="venueDurationUnit">
+                    <option value="hours" ${formData.venueDurationUnit === 'hours' ? 'selected' : ''}>hours</option>
+                    <option value="minutes" ${formData.venueDurationUnit === 'minutes' ? 'selected' : ''}>minutes</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             <!-- 2. Title below time -->
@@ -3052,25 +3070,6 @@ function openEventModal(trip, activeDay, existingItem) {
             <div class="form-group">
               <label class="form-label" for="venueSubtitle">Note / Subtitle (optional)</label>
               <input class="text-input" id="venueSubtitle" placeholder="e.g. visit and brunch, SIXT reservation 12345" value="${escapeHtml(formData.venueSubtitle)}" />
-            </div>
-
-            <!-- 4. End Time & Duration (Split with two-way calculation) -->
-            <div class="activity-time-grid">
-              <div class="form-group">
-                <label class="form-label" for="venueEndTime">End Time (optional)</label>
-                <input class="text-input" id="venueEndTime" placeholder="e.g. 11:30" value="${escapeHtml(formData.venueEndTime)}" />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="venueDurationVal">Duration (optional)</label>
-                <div style="display: flex; gap: 6px;">
-                  <input type="number" step="any" min="0" class="text-input" id="venueDurationVal" placeholder="e.g. 2" value="${escapeHtml(formData.venueDurationVal)}" style="flex: 1;" />
-                  <select class="text-input" id="venueDurationUnit" style="width: 105px; padding: 4px 8px; font-size: 13px;">
-                    <option value="hours" ${formData.venueDurationUnit === 'hours' ? 'selected' : ''}>hours</option>
-                    <option value="minutes" ${formData.venueDurationUnit === 'minutes' ? 'selected' : ''}>minutes</option>
-                  </select>
-                </div>
-              </div>
             </div>
 
             <!-- 5. Icon Picker -->
