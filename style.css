@@ -1595,3 +1595,23 @@ button:focus-visible {
   background: rgba(56, 189, 248, 0.12);
   color: var(--accent-blue);
 }
+
+/* Duration Quick Chips */
+.duration-chip-btn {
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.duration-chip-btn:hover {
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
+  background: rgba(56, 189, 248, 0.08);
+}
+

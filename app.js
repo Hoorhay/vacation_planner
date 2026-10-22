@@ -251,17 +251,30 @@ function getTripDateStatus(trip) {
 
 function sortDayItems(items) {
   if (!items || !Array.isArray(items)) return [];
-  return items.slice().sort((a, b) => {
-    if (!a.time && !b.time) return 0;
-    if (!a.time) return 1;
-    if (!b.time) return -1;
-    const toMinutes = (t) => {
-      const match = String(t).match(/^(\d{1,2}):(\d{2})/);
-      if (!match) return 9999;
-      return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
-    };
-    return toMinutes(a.time) - toMinutes(b.time);
+  const toMinutes = (t) => {
+    if (!t) return null;
+    const match = String(t).match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return null;
+    return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+  };
+
+  const timedIndices = [];
+  const timedItems = [];
+  items.forEach((item, index) => {
+    if (item && item.time && toMinutes(item.time) !== null) {
+      timedIndices.push(index);
+      timedItems.push(item);
+    }
   });
+
+  timedItems.sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
+
+  const result = items.slice();
+  timedIndices.forEach((origIndex, i) => {
+    result[origIndex] = timedItems[i];
+  });
+
+  return result;
 }
 
 // Reference Mockup Seed (Prague ➔ Islay / Whisky Show 2027)
@@ -434,6 +447,11 @@ function getSvgIcon(name, size = 18, color = 'currentColor', strokeWidth = 1.75)
       return `<svg ${common}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
     case 'image':
       return `<svg ${common}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+    case '!':
+    case 'important':
+    case 'alert-circle':
+    case 'exclamation':
+      return `<svg ${common}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
     case 'refresh':
       return `<svg ${common}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
     default:
@@ -935,6 +953,7 @@ function renderItineraryView(trip, { isReadOnly, dbUrl, dirty, formattedSync }) 
   }
 
   const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
+  recalculatePoolFreeTags(trip, activeDay);
   const currentDate = getDateForDay(trip.startDate, activeDay.dayNumber);
   const formattedFullDate = formatFullDate(currentDate);
 
@@ -1237,9 +1256,19 @@ function renderTimelineItem(item, isFirst, isLast) {
             <div>
               ${
                 step.lineBadge?.type === 'metro'
-                  ? `<span class="metro-badge" style="background: ${step.lineBadge.bgColor}; color: ${step.lineBadge.textColor}"><span class="metro-circle" style="background: ${step.lineBadge.textColor}; color: ${step.lineBadge.bgColor}">${step.lineBadge.sublabel || 'M'}</span>${step.lineBadge.label}</span>`
+                  ? `<span class="metro-badge" style="background: ${step.lineBadge.bgColor || 'var(--accent-amber)'}; color: ${step.lineBadge.textColor || 'var(--accent-amber-text)'}"><span class="metro-circle" style="background: ${step.lineBadge.textColor || 'var(--accent-amber-text)'}; color: ${step.lineBadge.bgColor || 'var(--accent-amber)'}">${step.lineBadge.sublabel || 'M'}</span>${escapeHtml(step.lineBadge.label)}</span>`
                   : step.lineBadge?.type === 'bus'
-                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor}; color: ${step.lineBadge.textColor}"><span style="font-size: 13px;">🚌</span> ${step.lineBadge.label}</span>`
+                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor || 'var(--accent-blue)'}; color: ${step.lineBadge.textColor || 'var(--accent-blue)'}"><span style="font-size: 13px;">🚌</span> ${escapeHtml(step.lineBadge.label)}</span>`
+                  : step.lineBadge?.type === 'tram'
+                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor || 'var(--accent-blue)'}; color: ${step.lineBadge.textColor || 'var(--accent-blue)'}"><span style="font-size: 13px;">🚊</span> ${escapeHtml(step.lineBadge.label)}</span>`
+                  : step.lineBadge?.type === 'train'
+                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor || 'var(--accent-blue)'}; color: ${step.lineBadge.textColor || 'var(--accent-blue)'}"><span style="font-size: 13px;">🚆</span> ${escapeHtml(step.lineBadge.label)}</span>`
+                  : step.lineBadge?.type === 'walk'
+                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor || 'var(--border-card)'}; color: ${step.lineBadge.textColor || 'var(--text-muted)'}"><span style="font-size: 13px;">🚶</span> ${escapeHtml(step.lineBadge.label || 'Walk')}</span>`
+                  : step.lineBadge?.type === 'ferry'
+                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor || '#5ed3c4'}; color: ${step.lineBadge.textColor || '#5ed3c4'}"><span style="font-size: 13px;">⛴️</span> ${escapeHtml(step.lineBadge.label)}</span>`
+                  : step.lineBadge?.label
+                  ? `<span class="bus-badge" style="border-color: ${step.lineBadge.borderColor || 'var(--accent-blue)'}; color: ${step.lineBadge.textColor || 'var(--accent-blue)'}">${escapeHtml(step.lineBadge.label)}</span>`
                   : ''
               }
             </div>
@@ -1249,6 +1278,8 @@ function renderTimelineItem(item, isFirst, isLast) {
     });
     contentHtml = `<div class="transit-chain">${chainSteps}</div>`;
   }
+
+  const isMoveable = !isReadOnly && item.type === 'venue' && !item.time;
 
   return `
     <li class="timeline-row">
@@ -1266,8 +1297,14 @@ function renderTimelineItem(item, isFirst, isLast) {
             !isReadOnly
               ? `
               <div class="timeline-item-actions">
-                <button type="button" class="icon-btn move-up-item-btn" data-move-up-id="${item.id}" title="Move up in schedule" style="padding: 2px 4px; font-size: 10px;">▲</button>
-                <button type="button" class="icon-btn move-down-item-btn" data-move-down-id="${item.id}" title="Move down in schedule" style="padding: 2px 4px; font-size: 10px;">▼</button>
+                ${
+                  isMoveable
+                    ? `
+                  <button type="button" class="icon-btn move-up-item-btn" data-move-up-id="${item.id}" title="Move up in schedule" style="padding: 2px 4px; font-size: 10px;">▲</button>
+                  <button type="button" class="icon-btn move-down-item-btn" data-move-down-id="${item.id}" title="Move down in schedule" style="padding: 2px 4px; font-size: 10px;">▼</button>
+                `
+                    : ''
+                }
                 <button type="button" class="icon-btn edit-item-btn" data-edit-item-id="${item.id}" title="Edit event" style="padding: 3px 6px;">
                   ${getSvgIcon('pencil', 12, 'currentColor')}
                 </button>
@@ -1430,6 +1467,7 @@ function attachTripListeners(trip) {
       const itemId = btn.getAttribute('data-delete-item-id');
       const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
       activeDay.items = activeDay.items.filter((i) => i.id !== itemId);
+      recalculatePoolFreeTags(trip, activeDay);
       touchTrip(trip);
       saveTripsToStorage(state.trips, true);
       renderApp();
@@ -1455,6 +1493,8 @@ function attachTripListeners(trip) {
       e.stopPropagation();
       const ideaId = btn.getAttribute('data-delete-idea-id');
       trip.pool = trip.pool.filter((i) => i.id !== ideaId);
+      const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
+      recalculatePoolFreeTags(trip, activeDay);
       touchTrip(trip);
       saveTripsToStorage(state.trips, true);
       renderApp();
@@ -1484,6 +1524,7 @@ function attachTripListeners(trip) {
 
       activeDay.items = sortDayItems(activeDay.items);
       trip.pool = trip.pool.filter((i) => i.id !== idea.id);
+      recalculatePoolFreeTags(trip, activeDay);
       touchTrip(trip);
       saveTripsToStorage(state.trips, true);
       renderApp();
@@ -1840,6 +1881,7 @@ function openDatesModal(trip) {
 
   let shiftStartDate = trip.startDate;
   let targetTotalDays = trip.totalDays;
+  let newDayTitleDraft = '';
 
   function renderModalContent() {
     let daysListHtml = '';
@@ -1899,7 +1941,7 @@ function openDatesModal(trip) {
             Add New Day
           </span>
           <div style="display: flex; gap: 8px;">
-            <input type="text" class="text-input" id="newDayTitleInput" placeholder="Day ${trip.days.length + 1} route or title" style="flex: 1;" />
+            <input type="text" class="text-input" id="newDayTitleInput" placeholder="Day ${trip.days.length + 1} route or title" value="${escapeHtml(newDayTitleDraft)}" style="flex: 1;" />
             <button type="button" class="btn-secondary" id="addNewDayBtn">+ Add Day</button>
           </div>
         </div>
@@ -1980,6 +2022,8 @@ function openDatesModal(trip) {
     });
 
     modal.querySelector('#applyShiftBtn')?.addEventListener('click', () => {
+      const titleInput = modal.querySelector('#newDayTitleInput');
+      if (titleInput) newDayTitleDraft = titleInput.value;
       trip.startDate = shiftStartDate;
 
       // Adjust total days count
@@ -2017,6 +2061,7 @@ function openDatesModal(trip) {
     modal.querySelector('#addNewDayBtn')?.addEventListener('click', () => {
       const titleInput = modal.querySelector('#newDayTitleInput');
       const title = titleInput.value.trim() || `Day ${trip.days.length + 1}`;
+      newDayTitleDraft = '';
       const nextNum = trip.days.length + 1;
       trip.days.push({
         id: `day-${nextNum}-${Date.now()}`,
@@ -2033,6 +2078,8 @@ function openDatesModal(trip) {
 
     modal.querySelectorAll('[data-rename-day]').forEach((btn) => {
       btn.addEventListener('click', () => {
+        const titleInput = modal.querySelector('#newDayTitleInput');
+        if (titleInput) newDayTitleDraft = titleInput.value;
         const dayNum = Number(btn.getAttribute('data-rename-day'));
         const day = trip.days.find((d) => d.dayNumber === dayNum);
         if (!day) return;
@@ -2050,6 +2097,8 @@ function openDatesModal(trip) {
 
     modal.querySelectorAll('[data-remove-day]').forEach((btn) => {
       btn.addEventListener('click', () => {
+        const titleInput = modal.querySelector('#newDayTitleInput');
+        if (titleInput) newDayTitleDraft = titleInput.value;
         const dayNum = Number(btn.getAttribute('data-remove-day'));
         const day = trip.days.find((d) => d.dayNumber === dayNum);
         if (day && day.items.length > 0) {
@@ -2616,6 +2665,39 @@ function openShareModal(trip, initialDayNumber) {
   });
 }
 
+function parseDurationToMinutes(text) {
+  if (!text) return null;
+  const str = String(text).toLowerCase().trim();
+  const rangeMatch = str.match(/(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})/);
+  if (rangeMatch) {
+    const toMin = (t) => {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+    const s = toMin(rangeMatch[1]);
+    const e = toMin(rangeMatch[2]);
+    if (e > s) return e - s;
+  }
+  const hrMatch = str.match(/^(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/);
+  if (hrMatch) {
+    return Math.round(parseFloat(hrMatch[1]) * 60);
+  }
+  const minMatch = str.match(/^(\d+)\s*(?:minutes?|mins?|m)\b/);
+  if (minMatch) {
+    return parseInt(minMatch[1], 10);
+  }
+  const hmMatch = str.match(/^(\d+)\s*h(?:ours?)?\s*(\d+)\s*m/);
+  if (hmMatch) {
+    return parseInt(hmMatch[1], 10) * 60 + parseInt(hmMatch[2], 10);
+  }
+  const numOnly = str.match(/^(\d+(?:\.\d+)?)$/);
+  if (numOnly) {
+    const n = parseFloat(numOnly[1]);
+    return n <= 12 ? Math.round(n * 60) : Math.round(n);
+  }
+  return null;
+}
+
 // Helper to calculate available/free gap on a day within a time range
 function calculateFreeTimeWindow(activeDay, rangeStr) {
   if (!rangeStr || !activeDay) return null;
@@ -2640,7 +2722,18 @@ function calculateFreeTimeWindow(activeDay, rangeStr) {
   (activeDay.items || []).forEach((item) => {
     if (item.timeWindow) {
       const tw = item.timeWindow.match(/(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})/);
-      if (tw) busy.push([toMin(tw[1]), toMin(tw[2])]);
+      if (tw) {
+        busy.push([toMin(tw[1]), toMin(tw[2])]);
+      } else {
+        const dur = parseDurationToMinutes(item.timeWindow);
+        if (dur && item.time) {
+          const t = toMin(item.time);
+          busy.push([t, t + dur]);
+        } else if (item.time) {
+          const t = toMin(item.time);
+          busy.push([t, t + 60]);
+        }
+      }
     } else if (item.from?.time && item.to?.time) {
       busy.push([toMin(item.from.time), toMin(item.to.time)]);
     } else if (item.time) {
@@ -2684,6 +2777,42 @@ function calculateFreeTimeWindow(activeDay, rangeStr) {
   return null;
 }
 
+// Recalculates pool ideas' "free" tag against the active day's schedule
+function recalculatePoolFreeTags(trip, activeDay) {
+  if (!trip || !trip.pool || !activeDay) return;
+
+  trip.pool.forEach((idea) => {
+    const applies = !idea.applicableDays || idea.applicableDays.length === 0 || idea.applicableDays.includes(activeDay.dayNumber);
+
+    let rangeStr = idea.timeRange;
+    if (!rangeStr && idea.tags) {
+      const clockTag = idea.tags.find((t) => /(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})/.test(t.text));
+      if (clockTag) {
+        const m = clockTag.text.match(/(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})/);
+        if (m) rangeStr = `${m[1]}–${m[2]}`;
+      }
+    }
+
+    if (!idea.tags) idea.tags = [];
+
+    // Strip previous free or no-free tags
+    idea.tags = idea.tags.filter((t) => !/^free /i.test(t.text) && !/^no free/i.test(t.text));
+
+    if (applies && rangeStr) {
+      const freeWindow = calculateFreeTimeWindow(activeDay, rangeStr);
+      if (freeWindow) {
+        const clockIdx = idea.tags.findIndex((t) => t.icon === 'clock' || /(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})/.test(t.text));
+        const freeTag = { icon: 'check', text: `free ${freeWindow}`, variant: 'green' };
+        if (clockIdx >= 0) {
+          idea.tags.splice(clockIdx + 1, 0, freeTag);
+        } else {
+          idea.tags.push(freeTag);
+        }
+      }
+    }
+  });
+}
+
 // 9. Day Event Planning Modal (Activity, Alert, Direct Transit, Multi-leg Transit)
 function openEventModal(trip, activeDay, existingItem) {
   const modal = document.createElement('div');
@@ -2694,14 +2823,27 @@ function openEventModal(trip, activeDay, existingItem) {
   let selectedIcon = existingItem ? (existingItem.icon || 'pin') : 'pin';
   let transportMode = existingItem && existingItem.type === 'transport' ? (existingItem.mode || 'flight') : 'flight';
 
-  // Multi-leg transit step builder state
-  let transitSteps = existingItem?.steps
-    ? JSON.parse(JSON.stringify(existingItem.steps))
-    : [
-        { stop: '', lineBadge: { type: 'metro', label: 'B', bgColor: '#F5B731', textColor: '#1B1300' }, note: '' },
-        { stop: '', lineBadge: { type: 'bus', label: '#100', borderColor: '#6CB8FF', textColor: '#6CB8FF' }, note: '' },
-        { stop: '', note: '' }
-      ];
+  // Persistent in-memory form state so nothing is lost when toggling tabs or adding/removing stops
+  const formData = {
+    time: existingItem ? (existingItem.time || '') : '',
+    venueTitle: existingItem?.title || '',
+    venueSubtitle: existingItem?.subtitle || '',
+    venueTimeWindow: existingItem?.timeWindow || '',
+    alertLabel: existingItem?.label || '',
+    transportBadge: existingItem?.badgeLabel || '',
+    transportNote: existingItem?.note || '',
+    fromLabel: existingItem?.from?.label || '',
+    fromTime: existingItem?.from?.time || '',
+    toLabel: existingItem?.to?.label || '',
+    toTime: existingItem?.to?.time || '',
+    transitSteps: existingItem?.steps
+      ? JSON.parse(JSON.stringify(existingItem.steps))
+      : [
+          { stop: '', lineBadge: { type: 'metro', label: 'B', bgColor: '#F5B731', textColor: '#1B1300' }, note: '' },
+          { stop: '', lineBadge: { type: 'bus', label: '#100', borderColor: '#6CB8FF', textColor: '#6CB8FF' }, note: '' },
+          { stop: '', note: '' }
+        ]
+  };
 
   const COLOR_PRESETS = [
     { label: 'Gold', hex: '#F5B731', text: '#1B1300' },
@@ -2711,6 +2853,76 @@ function openEventModal(trip, activeDay, existingItem) {
     { label: 'Purple', hex: '#A855F7', text: '#A855F7' },
     { label: 'Gray', hex: '#D4D4D8', text: '#D4D4D8' }
   ];
+
+  function syncDomToFormData() {
+    const timeInp = modal.querySelector('#eventTime');
+    if (timeInp) formData.time = timeInp.value;
+
+    const titleInp = modal.querySelector('#venueTitle');
+    if (titleInp) formData.venueTitle = titleInp.value;
+
+    const subInp = modal.querySelector('#venueSubtitle');
+    if (subInp) formData.venueSubtitle = subInp.value;
+
+    const twInp = modal.querySelector('#venueTimeWindow');
+    if (twInp) formData.venueTimeWindow = twInp.value;
+
+    const alertInp = modal.querySelector('#alertLabel');
+    if (alertInp) formData.alertLabel = alertInp.value;
+
+    const badgeInp = modal.querySelector('#transportBadge');
+    if (badgeInp) formData.transportBadge = badgeInp.value;
+
+    const noteInp = modal.querySelector('#transportNote');
+    if (noteInp) formData.transportNote = noteInp.value;
+
+    const fromLbl = modal.querySelector('#fromLabel');
+    if (fromLbl) formData.fromLabel = fromLbl.value;
+
+    const fromTm = modal.querySelector('#fromTime');
+    if (fromTm) formData.fromTime = fromTm.value;
+
+    const toLbl = modal.querySelector('#toLabel');
+    if (toLbl) formData.toLabel = toLbl.value;
+
+    const toTm = modal.querySelector('#toTime');
+    if (toTm) formData.toTime = toTm.value;
+
+    // Multi-leg transit inputs
+    modal.querySelectorAll('.step-stop-input').forEach((inp) => {
+      const idx = Number(inp.getAttribute('data-step-idx'));
+      if (formData.transitSteps[idx]) formData.transitSteps[idx].stop = inp.value;
+    });
+
+    modal.querySelectorAll('.step-note-input').forEach((inp) => {
+      const idx = Number(inp.getAttribute('data-step-idx'));
+      if (formData.transitSteps[idx]) formData.transitSteps[idx].note = inp.value;
+    });
+
+    modal.querySelectorAll('.step-line-type').forEach((sel) => {
+      const idx = Number(sel.getAttribute('data-step-idx'));
+      const lineType = sel.value;
+      const labelInp = modal.querySelector(`.step-line-label[data-step-idx="${idx}"]`);
+      const colorSel = modal.querySelector(`.step-line-color[data-step-idx="${idx}"]`);
+      const colorHex = colorSel ? colorSel.value : '#F5B731';
+      const labelText = labelInp ? labelInp.value : '';
+
+      if (formData.transitSteps[idx]) {
+        if (lineType === 'walk' && !labelText.trim()) {
+          delete formData.transitSteps[idx].lineBadge;
+        } else {
+          formData.transitSteps[idx].lineBadge = {
+            type: lineType,
+            label: labelText,
+            sublabel: lineType === 'metro' ? 'M' : undefined,
+            bgColor: colorHex,
+            textColor: colorHex === '#F5B731' ? '#1B1300' : '#FFFFFF',
+            borderColor: colorHex
+          };
+        }
+      }
+    });
+  }
 
   function renderModal() {
     modal.innerHTML = `
@@ -2731,28 +2943,36 @@ function openEventModal(trip, activeDay, existingItem) {
           ${
             currentType === 'venue'
               ? `
-            <!-- 1. Title on top -->
-            <div class="form-group">
-              <label class="form-label" for="venueTitle">Title / Venue *</label>
-              <input class="text-input" id="venueTitle" required placeholder="e.g. Kilchoman, Islay Hotel, Super Bar" value="${escapeHtml(existingItem?.title || '')}" autofocus />
-            </div>
-
-            <!-- 2. Time below title -->
+            <!-- 1. Time on top for consistency with other events -->
             <div class="form-group">
               <label class="form-label" for="eventTime">Time (optional)</label>
-              <input class="text-input" id="eventTime" placeholder="e.g. 09:30 or 11:15" value="${escapeHtml(existingItem ? (existingItem.time || '') : '')}" />
+              <input class="text-input" id="eventTime" placeholder="e.g. 09:30 or 11:15" value="${escapeHtml(formData.time)}" />
+            </div>
+
+            <!-- 2. Title below time -->
+            <div class="form-group">
+              <label class="form-label" for="venueTitle">Title / Venue *</label>
+              <input class="text-input" id="venueTitle" required placeholder="e.g. Kilchoman, Islay Hotel, Super Bar" value="${escapeHtml(formData.venueTitle)}" autofocus />
             </div>
 
             <!-- 3. Note / Subtitle -->
             <div class="form-group">
               <label class="form-label" for="venueSubtitle">Note / Subtitle (optional)</label>
-              <input class="text-input" id="venueSubtitle" placeholder="e.g. visit and brunch, SIXT reservation 12345" value="${escapeHtml(existingItem?.subtitle || '')}" />
+              <input class="text-input" id="venueSubtitle" placeholder="e.g. visit and brunch, SIXT reservation 12345" value="${escapeHtml(formData.venueSubtitle)}" />
             </div>
 
-            <!-- 4. Time Window / Duration -->
+            <!-- 4. Duration / Time Window -->
             <div class="form-group">
-              <label class="form-label" for="venueTimeWindow">Time Window / Duration (optional)</label>
-              <input class="text-input" id="venueTimeWindow" placeholder="e.g. 11:15–13:30 or 2 hours" value="${escapeHtml(existingItem?.timeWindow || '')}" />
+              <label class="form-label" for="venueTimeWindow">Duration or Time Window (optional)</label>
+              <input class="text-input" id="venueTimeWindow" placeholder="e.g. 2 hours, 90 mins, or 11:15–13:30" value="${escapeHtml(formData.venueTimeWindow)}" />
+              <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; align-items: center;">
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">Quick duration:</span>
+                <button type="button" class="duration-chip-btn" data-duration="30 min">30 min</button>
+                <button type="button" class="duration-chip-btn" data-duration="1 hour">1 hour</button>
+                <button type="button" class="duration-chip-btn" data-duration="1.5 hours">1.5 hours</button>
+                <button type="button" class="duration-chip-btn" data-duration="2 hours">2 hours</button>
+                <button type="button" class="duration-chip-btn" data-duration="3 hours">3 hours</button>
+              </div>
             </div>
 
             <!-- 5. Icon Picker -->
@@ -2766,7 +2986,8 @@ function openEventModal(trip, activeDay, existingItem) {
                   { id: 'cocktail', name: 'Bar/Drinks' },
                   { id: 'castle', name: 'Sights/Castles' },
                   { id: 'user', name: 'Meeting' },
-                  { id: 'music', name: 'Music/Pub' }
+                  { id: 'music', name: 'Music/Pub' },
+                  { id: 'important', name: 'Important (!)' }
                 ]
                   .map(
                     (ic) => `
@@ -2783,12 +3004,12 @@ function openEventModal(trip, activeDay, existingItem) {
               ? `
             <div class="form-group">
               <label class="form-label" for="eventTime">Time * (Mandatory)</label>
-              <input class="text-input" id="eventTime" required placeholder="e.g. 05:00 or 15:30" value="${escapeHtml(existingItem ? (existingItem.time || '') : '')}" autofocus />
+              <input class="text-input" id="eventTime" required placeholder="e.g. 05:00 or 15:30" value="${escapeHtml(formData.time)}" autofocus />
             </div>
 
             <div class="form-group">
               <label class="form-label" for="alertLabel">Alert / Deadline Message * (Mandatory)</label>
-              <input class="text-input" id="alertLabel" required placeholder="e.g. departure from hotel, gate closes, ferry check-in" value="${escapeHtml(existingItem?.label || '')}" />
+              <input class="text-input" id="alertLabel" required placeholder="e.g. departure from hotel, gate closes, ferry check-in" value="${escapeHtml(formData.alertLabel)}" />
             </div>
           `
               : currentType === 'transport'
@@ -2796,7 +3017,7 @@ function openEventModal(trip, activeDay, existingItem) {
             <!-- Scheduled Time -->
             <div class="form-group">
               <label class="form-label" for="eventTime">Departure Time (optional)</label>
-              <input class="text-input" id="eventTime" placeholder="e.g. 08:00 or 16:00" value="${escapeHtml(existingItem ? (existingItem.time || '') : '')}" />
+              <input class="text-input" id="eventTime" placeholder="e.g. 08:00 or 16:00" value="${escapeHtml(formData.time)}" />
             </div>
 
             <div class="form-group">
@@ -2811,33 +3032,33 @@ function openEventModal(trip, activeDay, existingItem) {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
               <div class="form-group">
                 <label class="form-label" for="transportBadge">Header Badge / Pill *</label>
-                <input class="text-input" id="transportBadge" required placeholder="e.g. Flight · FR1014, Drive" value="${escapeHtml(existingItem?.badgeLabel || (transportMode === 'flight' ? 'Flight' : transportMode === 'ferry' ? 'Ferry' : 'Drive'))}" />
+                <input class="text-input" id="transportBadge" required placeholder="e.g. Flight · FR1014, Drive" value="${escapeHtml(formData.transportBadge || (transportMode === 'flight' ? 'Flight' : transportMode === 'ferry' ? 'Ferry' : 'Drive'))}" />
               </div>
               <div class="form-group">
                 <label class="form-label" for="transportNote">Note (optional)</label>
-                <input class="text-input" id="transportNote" placeholder="e.g. estimated 2 hours, terminal 2" value="${escapeHtml(existingItem?.note || '')}" />
+                <input class="text-input" id="transportNote" placeholder="e.g. estimated 2 hours, terminal 2" value="${escapeHtml(formData.transportNote)}" />
               </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
               <div class="form-group">
                 <label class="form-label" for="fromLabel">Origin (From) *</label>
-                <input class="text-input" id="fromLabel" required placeholder="e.g. PRG or Edinburgh" value="${escapeHtml(existingItem?.from?.label || '')}" />
+                <input class="text-input" id="fromLabel" required placeholder="e.g. PRG or Edinburgh" value="${escapeHtml(formData.fromLabel)}" />
               </div>
               <div class="form-group">
                 <label class="form-label" for="fromTime">Origin Time</label>
-                <input class="text-input" id="fromTime" placeholder="e.g. 08:00" value="${escapeHtml(existingItem?.from?.time || '')}" />
+                <input class="text-input" id="fromTime" placeholder="e.g. 08:00" value="${escapeHtml(formData.fromTime)}" />
               </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
               <div class="form-group">
                 <label class="form-label" for="toLabel">Destination (To) *</label>
-                <input class="text-input" id="toLabel" required placeholder="e.g. EDI or Kennacraig" value="${escapeHtml(existingItem?.to?.label || '')}" />
+                <input class="text-input" id="toLabel" required placeholder="e.g. EDI or Kennacraig" value="${escapeHtml(formData.toLabel)}" />
               </div>
               <div class="form-group">
                 <label class="form-label" for="toTime">Destination Time</label>
-                <input class="text-input" id="toTime" placeholder="e.g. 10:00" value="${escapeHtml(existingItem?.to?.time || '')}" />
+                <input class="text-input" id="toTime" placeholder="e.g. 10:00" value="${escapeHtml(formData.toTime)}" />
               </div>
             </div>
           `
@@ -2845,35 +3066,52 @@ function openEventModal(trip, activeDay, existingItem) {
             <!-- Multi-leg Transit -->
             <div class="form-group">
               <label class="form-label" for="eventTime">Departure Time (optional)</label>
-              <input class="text-input" id="eventTime" placeholder="e.g. 05:15" value="${escapeHtml(existingItem ? (existingItem.time || '') : '')}" />
+              <input class="text-input" id="eventTime" placeholder="e.g. 05:15" value="${escapeHtml(formData.time)}" />
             </div>
 
             <div class="form-group">
               <label class="form-label">Transit Stops & Transfers</label>
-              <div style="display: flex; flex-direction: column; gap: 10px; max-height: 280px; overflow-y: auto;">
-                ${transitSteps
+              <div style="display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; padding-right: 4px;">
+                ${formData.transitSteps
                   .map((step, idx) => {
-                    const isLast = idx === transitSteps.length - 1;
+                    const isFirst = idx === 0;
+                    const isLast = idx === formData.transitSteps.length - 1;
                     const badge = step.lineBadge || {};
-                    return `
+                    const stepRole = isFirst ? 'Origin (Stop 1)' : isLast ? `Destination (Stop ${idx + 1})` : `Transfer (Stop ${idx + 1})`;
+                    const roleColor = isFirst ? 'var(--accent-blue)' : isLast ? '#5ed3c4' : 'var(--text-secondary)';
+
+                    let cardHtml = `
                     <div style="padding: 10px; background: var(--bg-canvas); border: 1px solid var(--border-card); border-radius: 8px; display: flex; flex-direction: column; gap: 8px;">
                       <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                        <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--accent-blue);">Stop ${idx + 1}</span>
+                        <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: ${roleColor};">
+                          ${isFirst ? '📍' : isLast ? '🏁' : '🔄'} ${stepRole}
+                        </span>
                         ${
-                          transitSteps.length > 2
+                          formData.transitSteps.length > 2
                             ? `<button type="button" class="card-delete-btn" data-del-step="${idx}">Delete Stop</button>`
                             : ''
                         }
                       </div>
 
-                      <div class="form-group">
-                        <label class="form-label" style="font-size: 11px;">Station / Stop Name *</label>
-                        <input type="text" class="text-input step-stop-input" data-step-idx="${idx}" placeholder="e.g. Křižíkova, Zličín, PRG T2" value="${escapeHtml(step.stop)}" required />
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div class="form-group">
+                          <label class="form-label" style="font-size: 10.5px;">Station / Stop Name *</label>
+                          <input type="text" class="text-input step-stop-input" data-step-idx="${idx}" placeholder="${isFirst ? 'e.g. Křižíkova' : isLast ? 'e.g. PRG T2' : 'e.g. Zličín'}" value="${escapeHtml(step.stop)}" required />
+                        </div>
+                        <div class="form-group">
+                          <label class="form-label" style="font-size: 10.5px;">Stop Note / Time (optional)</label>
+                          <input type="text" class="text-input step-note-input" data-step-idx="${idx}" placeholder="${isFirst ? 'e.g. dep 05:15' : isLast ? 'e.g. arrival ~06:15' : 'e.g. 5 min transfer'}" value="${escapeHtml(step.note || '')}" />
+                        </div>
                       </div>
+                    </div>
+                    `;
 
-                      ${
-                        !isLast
-                          ? `
+                    if (!isLast) {
+                      cardHtml += `
+                      <div style="margin: 2px 0 2px 14px; padding: 6px 10px; border-left: 2px dashed var(--track-connector); display: flex; flex-direction: column; gap: 6px;">
+                        <span style="font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">
+                          Leg ${idx + 1} Transport (from Stop ${idx + 1} to Stop ${idx + 2}) ➔
+                        </span>
                         <div style="display: grid; grid-template-columns: 100px 1fr 1fr; gap: 8px;">
                           <div>
                             <label class="form-label" style="font-size: 10px;">Line Type</label>
@@ -2882,12 +3120,13 @@ function openEventModal(trip, activeDay, existingItem) {
                               <option value="bus" ${badge.type === 'bus' ? 'selected' : ''}>Bus</option>
                               <option value="tram" ${badge.type === 'tram' ? 'selected' : ''}>Tram</option>
                               <option value="train" ${badge.type === 'train' ? 'selected' : ''}>Train</option>
-                              <option value="walk" ${!badge.type || badge.type === 'walk' ? 'selected' : ''}>Walk / Transfer</option>
+                              <option value="walk" ${badge.type === 'walk' ? 'selected' : ''}>Walk</option>
+                              <option value="ferry" ${badge.type === 'ferry' ? 'selected' : ''}>Ferry</option>
                             </select>
                           </div>
                           <div>
                             <label class="form-label" style="font-size: 10px;">Line Label</label>
-                            <input type="text" class="text-input step-line-label" data-step-idx="${idx}" placeholder="e.g. B, #100" value="${escapeHtml(badge.label || '')}" style="height: 32px; padding: 4px 6px; font-size: 12px;" />
+                            <input type="text" class="text-input step-line-label" data-step-idx="${idx}" placeholder="e.g. B, #100, Tram 9" value="${escapeHtml(badge.label || '')}" style="height: 32px; padding: 4px 6px; font-size: 12px;" />
                           </div>
                           <div>
                             <label class="form-label" style="font-size: 10px;">Color</label>
@@ -2896,20 +3135,15 @@ function openEventModal(trip, activeDay, existingItem) {
                             </select>
                           </div>
                         </div>
-                      `
-                          : `
-                        <div class="form-group">
-                          <label class="form-label" style="font-size: 10px;">Arrival / Destination Note</label>
-                          <input type="text" class="text-input step-note-input" data-step-idx="${idx}" placeholder="e.g. arrival ~6:15" value="${escapeHtml(step.note || '')}" style="height: 32px; padding: 4px 8px; font-size: 12px;" />
-                        </div>
-                      `
-                      }
-                    </div>
-                  `;
+                      </div>
+                      `;
+                    }
+
+                    return cardHtml;
                   })
                   .join('')}
               </div>
-              <button type="button" class="btn-secondary" id="addTransitLegBtn" style="align-self: flex-start; margin-top: 4px; font-size: 11px;">+ Add Next Stop</button>
+              <button type="button" class="btn-secondary" id="addTransitLegBtn" style="align-self: flex-start; margin-top: 4px; font-size: 11px;">+ Add Next Stop & Transfer</button>
             </div>
           `
           }
@@ -2934,13 +3168,24 @@ function openEventModal(trip, activeDay, existingItem) {
     attachTimeMask(modal.querySelector('#eventTime'));
     attachTimeMask(modal.querySelector('#fromTime'));
     attachTimeMask(modal.querySelector('#toTime'));
-    attachTimeRangeMask(modal.querySelector('#venueTimeWindow'));
 
     modal.querySelector('#cancelEventModalBtn').addEventListener('click', () => modal.remove());
     modal.querySelector('#cancelEventFormBtn').addEventListener('click', () => modal.remove());
 
+    modal.querySelectorAll('.duration-chip-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const dur = btn.getAttribute('data-duration');
+        const twInp = modal.querySelector('#venueTimeWindow');
+        if (twInp) {
+          twInp.value = dur;
+          formData.venueTimeWindow = dur;
+        }
+      });
+    });
+
     modal.querySelectorAll('.event-type-btn[data-type]').forEach((btn) => {
       btn.addEventListener('click', () => {
+        syncDomToFormData();
         currentType = btn.getAttribute('data-type');
         renderModal();
       });
@@ -2948,6 +3193,7 @@ function openEventModal(trip, activeDay, existingItem) {
 
     modal.querySelectorAll('.event-type-btn[data-mode]').forEach((btn) => {
       btn.addEventListener('click', () => {
+        syncDomToFormData();
         transportMode = btn.getAttribute('data-mode');
         renderModal();
       });
@@ -2963,20 +3209,23 @@ function openEventModal(trip, activeDay, existingItem) {
 
     // Multi-leg transit step interactions
     modal.querySelector('#addTransitLegBtn')?.addEventListener('click', () => {
-      transitSteps.push({ stop: '', note: '' });
+      syncDomToFormData();
+      formData.transitSteps.push({ stop: '', note: '' });
       renderModal();
     });
 
     modal.querySelectorAll('[data-del-step]').forEach((btn) => {
       btn.addEventListener('click', () => {
+        syncDomToFormData();
         const idx = Number(btn.getAttribute('data-del-step'));
-        transitSteps.splice(idx, 1);
+        formData.transitSteps.splice(idx, 1);
         renderModal();
       });
     });
 
     modal.querySelector('#modalDeleteEventBtn')?.addEventListener('click', () => {
       activeDay.items = activeDay.items.filter((i) => i.id !== existingItem.id);
+      recalculatePoolFreeTags(trip, activeDay);
       touchTrip(trip);
       saveTripsToStorage(state.trips, true);
       modal.remove();
@@ -2985,21 +3234,20 @@ function openEventModal(trip, activeDay, existingItem) {
 
     modal.querySelector('#eventForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const timeVal = modal.querySelector('#eventTime').value.trim();
+      syncDomToFormData();
+      const timeVal = formData.time.trim();
 
       let newItem = existingItem || { id: `event-${Date.now()}` };
       newItem.time = timeVal || undefined;
 
       if (currentType === 'venue') {
         newItem.type = 'venue';
-        newItem.title = modal.querySelector('#venueTitle').value.trim();
-        const sub = modal.querySelector('#venueSubtitle').value.trim();
-        newItem.subtitle = sub || undefined;
-        const tw = modal.querySelector('#venueTimeWindow').value.trim();
-        newItem.timeWindow = tw || undefined;
+        newItem.title = formData.venueTitle.trim();
+        newItem.subtitle = formData.venueSubtitle.trim() || undefined;
+        newItem.timeWindow = formData.venueTimeWindow.trim() || undefined;
         newItem.icon = selectedIcon;
       } else if (currentType === 'alert') {
-        const alertLabel = modal.querySelector('#alertLabel').value.trim();
+        const alertLabel = formData.alertLabel.trim();
         if (!timeVal || !alertLabel) {
           alert('Both time and alert message are required for alerts.');
           return;
@@ -3010,57 +3258,20 @@ function openEventModal(trip, activeDay, existingItem) {
       } else if (currentType === 'transport') {
         newItem.type = 'transport';
         newItem.mode = transportMode;
-        newItem.badgeLabel = modal.querySelector('#transportBadge').value.trim();
-        const noteVal = modal.querySelector('#transportNote').value.trim();
-        newItem.note = noteVal || undefined;
+        newItem.badgeLabel = formData.transportBadge.trim();
+        newItem.note = formData.transportNote.trim() || undefined;
         newItem.badgeColor = transportMode === 'flight' ? '#6cb8ff' : transportMode === 'ferry' ? '#5ed3c4' : '#d4d4d8';
         newItem.from = {
-          label: modal.querySelector('#fromLabel').value.trim(),
-          time: modal.querySelector('#fromTime').value.trim() || undefined
+          label: formData.fromLabel.trim(),
+          time: formData.fromTime.trim() || undefined
         };
         newItem.to = {
-          label: modal.querySelector('#toLabel').value.trim(),
-          time: modal.querySelector('#toTime').value.trim() || undefined
+          label: formData.toLabel.trim(),
+          time: formData.toTime.trim() || undefined
         };
       } else if (currentType === 'transit_chain') {
         newItem.type = 'transit_chain';
-
-        // Gather from form inputs
-        modal.querySelectorAll('.step-stop-input').forEach((inp) => {
-          const idx = Number(inp.getAttribute('data-step-idx'));
-          if (transitSteps[idx]) transitSteps[idx].stop = inp.value.trim();
-        });
-
-        modal.querySelectorAll('.step-line-type').forEach((sel) => {
-          const idx = Number(sel.getAttribute('data-step-idx'));
-          const lineType = sel.value;
-          const labelInp = modal.querySelector(`.step-line-label[data-step-idx="${idx}"]`);
-          const colorSel = modal.querySelector(`.step-line-color[data-step-idx="${idx}"]`);
-          const colorHex = colorSel ? colorSel.value : '#F5B731';
-
-          if (lineType === 'walk' || !labelInp || !labelInp.value.trim()) {
-            if (transitSteps[idx]) delete transitSteps[idx].lineBadge;
-          } else {
-            const labelText = labelInp.value.trim();
-            if (transitSteps[idx]) {
-              transitSteps[idx].lineBadge = {
-                type: lineType,
-                label: labelText,
-                sublabel: lineType === 'metro' ? 'M' : undefined,
-                bgColor: colorHex,
-                textColor: colorHex === '#F5B731' ? '#1B1300' : '#FFFFFF',
-                borderColor: colorHex
-              };
-            }
-          }
-        });
-
-        modal.querySelectorAll('.step-note-input').forEach((inp) => {
-          const idx = Number(inp.getAttribute('data-step-idx'));
-          if (transitSteps[idx]) transitSteps[idx].note = inp.value.trim() || undefined;
-        });
-
-        newItem.steps = transitSteps.filter((s) => s.stop);
+        newItem.steps = formData.transitSteps.filter((s) => s.stop && s.stop.trim());
       }
 
       if (!existingItem) {
@@ -3068,6 +3279,7 @@ function openEventModal(trip, activeDay, existingItem) {
         activeDay.items.push(newItem);
       }
       activeDay.items = sortDayItems(activeDay.items);
+      recalculatePoolFreeTags(trip, activeDay);
       touchTrip(trip);
       saveTripsToStorage(state.trips, true);
       modal.remove();
@@ -3125,7 +3337,8 @@ function openIdeaModal(trip, existingIdea) {
               { id: 'cocktail', name: 'Drinks' },
               { id: 'castle', name: 'Sights' },
               { id: 'user', name: 'Meeting' },
-              { id: 'music', name: 'Music' }
+              { id: 'music', name: 'Music' },
+              { id: 'important', name: 'Important (!)' }
             ]
               .map(
                 (ic) => `
@@ -3202,6 +3415,8 @@ function openIdeaModal(trip, existingIdea) {
 
   modal.querySelector('#modalDeleteIdeaBtn')?.addEventListener('click', () => {
     trip.pool = trip.pool.filter((i) => i.id !== existingIdea.id);
+    const activeDay = trip.days.find((d) => d.dayNumber === state.activeDayNumber) || trip.days[0];
+    recalculatePoolFreeTags(trip, activeDay);
     touchTrip(trip);
     saveTripsToStorage(state.trips, true);
     modal.remove();
@@ -3266,6 +3481,7 @@ function openIdeaModal(trip, existingIdea) {
     item.title = title;
     item.icon = selectedIcon;
     item.applicableDays = isAllDays ? [] : checkedDays;
+    item.timeRange = timeRange || undefined;
     item.tags = tags;
 
     if (!existingIdea) {
@@ -3273,6 +3489,7 @@ function openIdeaModal(trip, existingIdea) {
       trip.pool.push(item);
     }
 
+    recalculatePoolFreeTags(trip, activeDay);
     touchTrip(trip);
     saveTripsToStorage(state.trips, true);
     modal.remove();
