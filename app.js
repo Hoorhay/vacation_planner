@@ -727,7 +727,6 @@ function renderSidebarView() {
   return `
     <div class="home-view" style="margin-top: 4px;">
       <h1 class="home-title">Vacation Planner</h1>
-      <p class="home-subtitle">Plan, track, and navigate travel itineraries offline.</p>
 
       <button type="button" class="primary-btn" id="planTripBtn">
         ${getSvgIcon('plus', 16, '#09090b', 2.5)}
