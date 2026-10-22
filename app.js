@@ -2845,7 +2845,7 @@ function openEventModal(trip, activeDay, existingItem) {
     }
   }
 
-  const existingStartTime = existingItem ? (existingItem.time || '') : '';
+  const existingStartTime = existingItem ? (existingItem.time || existingItem.from?.time || '') : '';
   if (existingStartTime && initialEndTime && !initialDurationVal) {
     const dur = calculateDurationFromTimes(existingStartTime, initialEndTime);
     if (dur) {
@@ -2872,7 +2872,7 @@ function openEventModal(trip, activeDay, existingItem) {
     isBadgeCustom: Boolean(existingItem?.badgeLabel && !['Flight', 'Drive', 'Train', 'Ferry'].includes(existingItem.badgeLabel.trim())),
     transportNote: existingItem?.note || '',
     fromLabel: existingItem?.from?.label || '',
-    fromTime: existingItem?.from?.time || '',
+    fromTime: existingItem?.from?.time || existingStartTime,
     toLabel: existingItem?.to?.label || '',
     toTime: existingItem?.to?.time || '',
     transitSteps: existingItem?.steps
@@ -2895,7 +2895,12 @@ function openEventModal(trip, activeDay, existingItem) {
 
   function syncDomToFormData() {
     const timeInp = modal.querySelector('#eventTime');
-    if (timeInp) formData.time = timeInp.value;
+    if (timeInp) {
+      formData.time = timeInp.value;
+      if (currentType === 'transport') {
+        formData.fromTime = timeInp.value;
+      }
+    }
 
     const titleInp = modal.querySelector('#venueTitle');
     if (titleInp) formData.venueTitle = titleInp.value;
@@ -3069,10 +3074,16 @@ function openEventModal(trip, activeDay, existingItem) {
           `
               : currentType === 'transport'
               ? `
-            <!-- Scheduled Time -->
-            <div class="form-group">
-              <label class="form-label" for="eventTime">Departure Time (optional)</label>
-              <input class="text-input" id="eventTime" value="${escapeHtml(formData.time)}" />
+            <!-- Scheduled Departure & Arrival Times -->
+            <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px;">
+              <div class="form-group" style="min-width: 0;">
+                <label class="form-label" for="eventTime">Departure Time</label>
+                <input class="text-input" id="eventTime" placeholder="08:00" value="${escapeHtml(formData.time)}" style="width: 100%; min-width: 0;" />
+              </div>
+              <div class="form-group" style="min-width: 0;">
+                <label class="form-label" for="toTime">Arrival Time</label>
+                <input class="text-input" id="toTime" placeholder="10:00" value="${escapeHtml(formData.toTime)}" style="width: 100%; min-width: 0;" />
+              </div>
             </div>
 
             <div class="form-group">
@@ -3096,25 +3107,14 @@ function openEventModal(trip, activeDay, existingItem) {
               </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr); gap: 8px;">
+            <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px;">
               <div class="form-group" style="min-width: 0;">
                 <label class="form-label" for="fromLabel">From *</label>
                 <input class="text-input" id="fromLabel" required value="${escapeHtml(formData.fromLabel)}" style="width: 100%; min-width: 0;" />
               </div>
               <div class="form-group" style="min-width: 0;">
-                <label class="form-label" for="fromTime">Departure Time</label>
-                <input class="text-input" id="fromTime" value="${escapeHtml(formData.fromTime)}" style="width: 100%; min-width: 0;" />
-              </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr); gap: 8px;">
-              <div class="form-group" style="min-width: 0;">
                 <label class="form-label" for="toLabel">To *</label>
                 <input class="text-input" id="toLabel" required value="${escapeHtml(formData.toLabel)}" style="width: 100%; min-width: 0;" />
-              </div>
-              <div class="form-group" style="min-width: 0;">
-                <label class="form-label" for="toTime">Arrival Time</label>
-                <input class="text-input" id="toTime" placeholder="10:00" value="${escapeHtml(formData.toTime)}" style="width: 100%; min-width: 0;" />
               </div>
             </div>
           `
@@ -3402,18 +3402,21 @@ function openEventModal(trip, activeDay, existingItem) {
         newItem.time = timeVal;
         newItem.label = alertLabel;
       } else if (currentType === 'transport') {
+        const depTime = (formData.time || formData.fromTime || '').trim() || undefined;
+        const arrTime = (formData.toTime || '').trim() || undefined;
         newItem.type = 'transport';
+        newItem.time = depTime;
         newItem.mode = transportMode;
         newItem.badgeLabel = formData.transportBadge.trim();
         newItem.note = formData.transportNote.trim() || undefined;
         newItem.badgeColor = transportMode === 'flight' ? '#6cb8ff' : transportMode === 'ferry' ? '#5ed3c4' : transportMode === 'train' ? '#f5b731' : '#d4d4d8';
         newItem.from = {
           label: formData.fromLabel.trim(),
-          time: formData.fromTime.trim() || undefined
+          time: depTime
         };
         newItem.to = {
           label: formData.toLabel.trim(),
-          time: formData.toTime.trim() || undefined
+          time: arrTime
         };
       } else if (currentType === 'transit_chain') {
         newItem.type = 'transit_chain';
